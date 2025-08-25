@@ -10,7 +10,7 @@ RUN npm install --no-audit --no-fund
 # Copy API source
 COPY server/ .
 
-# Copy static client to /app/client (servi par Express)
+# Copy static client (servi par Express)
 WORKDIR /app
 COPY client ./client
 

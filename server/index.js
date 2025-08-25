@@ -19,16 +19,16 @@ app.use(express.json());
 // API
 app.use('/api', donationRoutes);
 
-// Statique: sert le dossier client/ depuis le même service (même URL)
+// Statique (sert /client depuis le même service)
 const clientDir = path.join(__dirname, '../client');
 app.use(express.static(clientDir));
 
-// Fallback SPA/HTML
+// Fallback pour ton index.html
 app.get('*', (_req, res) => {
   res.sendFile(path.join(clientDir, 'index.html'));
 });
 
-// WebSocket: push initial
+// WebSocket : push des valeurs au connect
 io.on('connection', async (socket) => {
   try {
     const total = await getTotalDonations();
@@ -39,8 +39,6 @@ io.on('connection', async (socket) => {
   }
 });
 
-// Sanity endpoint
-app.get('/', (_req, res) => res.send('Server running'));
-
-const PORT = process.env.PORT || 3000;
+// ✅ On FORCE le port à 3000 (pas de PORT dynamique Railway)
+const PORT = 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

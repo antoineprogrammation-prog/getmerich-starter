@@ -8,10 +8,16 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
   <script src="https://js.stripe.com/v3/" defer></script>
   <script src="/main.js" defer></script>
+
+  <!-- Import The Seasons (Google Fonts) -->
+  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
-    <h1>Get Me Rich</h1>
+    <!-- ✅ Nouveau titre -->
+    <h1 class="main-title">
+      Get me rich <span class="please">(please)</span>
+    </h1>
 
     <div id="notice" class="notice hidden"></div>
 
@@ -19,30 +25,59 @@
       <span id="total">0</span> / 1 000 000$ (net)
     </div>
 
-    <!-- Thanks text + progress -->
     <div id="last">Thanks to the last donor : -</div>
     <div id="progress-bar"><div id="progress"></div></div>
 
     <!-- Reveal section -->
     <div class="reveal">
       <div class="reveal-title">Make a donation to reveal who I am</div>
+      <!-- ✅ Phrase déplacée -->
+      <div class="reveal-legend">1$ = 1 pixel revealed</div>
       <div class="reveal-stage">
         <canvas id="photoCanvas"></canvas>
         <canvas id="maskCanvas"></canvas>
       </div>
-      <div class="reveal-legend">1$ = 1 pixel revealed</div>
     </div>
 
     <input type="text" id="pseudo" placeholder="Your pseudo" />
     <input type="number" id="amount" placeholder="Amount in $" min="1" value="5" />
 
-    <!-- ✅ Phrase déplacée ici, sous le champ Amount -->
     <div class="fineprint">
       Payment processing fees are included; the amount shown reflects what we actually receive.
     </div>
 
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>
+
+    <!-- ✅ Nouveau bloc 2 colonnes -->
+    <div class="two-columns">
+      <div class="col left-col">
+        <div class="big-goal">1 000 000$</div>
+        <div>=</div>
+        <div class="formula">
+          <div>👥 1 000 000</div>
+          <div>x 💵 1$</div>
+        </div>
+        <div class="formula">
+          <div>👥 500 000</div>
+          <div>x 💵 2$</div>
+        </div>
+        <div class="formula">
+          <div>👥 200 000</div>
+          <div>x 💵 5$</div>
+        </div>
+        <div class="formula">
+          <div>👥 100 000</div>
+          <div>x 💵 10$</div>
+        </div>
+      </div>
+      <div class="col right-col">
+        <div class="big-thank">Thank you</div>
+        <div class="thanks-multi">
+          merci, gracias, danke, grazie, obrigado, obrigada, dank je, dank u, спасибо, xièxiè, ありがとう, 감사합니다, شكراً, धन्यवाद, ধন্যবাদ, asante, teşekkür ederim, dziękuję, děkuji, ďakujem, köszönöm, ευχαριστώ, kiitos, tack, takk, спасибо большое, obrigado muito, grazie mille, merci beaucoup, thank you very much, gracias mil, danke schön, takk skal du ha, shukriya, mahadsan, salamat, terima kasih, धन्यवाद बहुत, धन्यवाद आपका, շնորհակալություն, תודה, תודה רבה, धन्यवाद, धन्यवाद, תודה רבה לך, شكرا جزيلا, धन्यवाद आपका, ধন্যবাদ অনেক, สุขใจ, bedankt, teşekkürler, danke sehr, grazie tante, tack så mycket, спасибо огромное, xièxiè nǐ, 감사합니다 정말, شكراً جزيلاً, धन्यवाद बहुत, dhanyavaad bahut, asante sana, merci infiniment, thank you kindly, grazie infinite, danke vielmals, gracias de todo corazón, धन्यवाद दिल से, شكرا من القلب, תודה רבה מכל הלב, kiitos paljon, çok teşekkürler, merci bien, grazie di cuore, thanks a lot, muchas gracias, danke sehr, thank you so much, xièxiè duō, ありがとう ございます, 감사합니다 정말로, شكراً جزيلاً لك, dhanyavaad bahut zyaada, asante sana sana, salamat po, terima kasih banyak, bedankt zeer, tack så hjärtligt, ευχαριστώ πολύ, danke schön sehr, grazie mille davvero, thank you very much indeed, merci énormément, gracias infinitas, спасибо большое огромное, köszönöm szépen, dhanyavaad atyadhik, شكرا جزيلاً جدا, teşekkür ederim çok, danke schön sehr, grazie infinite volte
+        </div>
+      </div>
+    </div>
   </div>
 
   <canvas id="animationCanvas"></canvas>

@@ -2,6 +2,8 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 let pool;
+
+// Supporte DATABASE_URL (Railway) ou variables séparées (local)
 if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -18,4 +20,16 @@ if (process.env.DATABASE_URL) {
   });
 }
 
-module.exports = pool;
+// Initialisation auto de la table si absente
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS donations (
+      id SERIAL PRIMARY KEY,
+      pseudo VARCHAR(50) NOT NULL,
+      amount NUMERIC(10,2) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+module.exports = { pool, initDB };

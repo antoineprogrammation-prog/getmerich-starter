@@ -15,7 +15,7 @@ function clearError() {
   notice.textContent = '';
 }
 
-// --- WebSocket sur même origine ---
+// --- WebSocket (même origine) ---
 const socket = io();
 const totalEl = document.getElementById('total');
 const lastEl = document.getElementById('last');
@@ -31,9 +31,22 @@ const ctx = canvas.getContext('2d');
 function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
 addEventListener('resize', resize); resize();
 
+// Pré-chargement fiable des images
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+let coinsImg, billsImg, assetsReady = false;
+Promise.all([
+  loadImage('/assets/coins.png').then(img => (coinsImg = img)),
+  loadImage('/assets/bills.png').then(img => (billsImg = img)),
+]).then(() => { assetsReady = true; }).catch(() => { /* on continue sans images */ });
+
 let particles = [];
-const coinsImg = new Image(); coinsImg.src = '/assets/coins.png';
-const billsImg = new Image(); billsImg.src = '/assets/bills.png';
 
 // --- Stripe ---
 let stripe, elements, paymentElement;
@@ -52,14 +65,13 @@ async function createPaymentIntent(amount, pseudo) {
     body: JSON.stringify({ amount, pseudo })
   });
   const data = await r.json();
-  if (!r.ok || !data.clientSecret) {
-    throw new Error(data.error || 'PaymentIntent creation failed.');
-  }
+  if (!r.ok || !data.clientSecret) throw new Error(data.error || 'PaymentIntent creation failed.');
   return data.clientSecret;
 }
 
 async function mountPaymentElement() {
   clearError();
+
   const { publishableKey, mode } = await fetchConfig();
   stripe = Stripe(publishableKey);
 
@@ -80,12 +92,7 @@ async function mountPaymentElement() {
   }
 }
 
-// --- WebSocket: mise à jour temps réel reçue du serveur ---
-socket.on('update', ({ total, last }) => {
-  applyTotals(total, last);
-});
-
-// --- Helpers UI pour total/last ---
+// --- Maj UI total/last ---
 function applyTotals(total, last) {
   const t = Number(total) || 0;
   totalEl.textContent = t;
@@ -93,8 +100,13 @@ function applyTotals(total, last) {
   lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
 }
 
-// --- Animation réaliste et limitée ---
+// --- Socket updates ---
+socket.on('update', ({ total, last }) => applyTotals(total, last));
+
+// --- Animations ---
 function createParticles(amount) {
+  if (!assetsReady) return; // si images pas prêtes, on évite l'effet "invisible"
+
   const maxCoins = Math.min(Math.max(3, Math.floor(amount / 5)), 10);
   const maxBills = amount >= 20 ? Math.min(Math.floor(amount / 20), 5) : 0;
 
@@ -121,6 +133,7 @@ function createParticles(amount) {
     });
   }
 }
+
 function animate() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   for (let i = particles.length - 1; i >= 0; i--) {
@@ -128,7 +141,7 @@ function animate() {
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(p.r);
-    ctx.drawImage(p.img, -p.img.width/2, -p.img.height/2);
+    if (p.img) ctx.drawImage(p.img, -p.img.width/2, -p.img.height/2);
     ctx.restore();
 
     p.x += p.vx; p.y += p.vy; p.r += p.vr;
@@ -141,16 +154,16 @@ function animate() {
 }
 animate();
 
-// --- Flux "Donate" ---
+// --- Flux Donate ---
 async function confirmAndRecord() {
-  // 1) Confirmer le paiement
+  // 1) Confirmer paiement
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
-  // 2) Son (interaction OK)
+  // 2) Son
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
-  // 3) Enregistrer le don et récupérer total/last directement
+  // 3) Enregistrer don + recevoir total/last
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
 
@@ -160,23 +173,21 @@ async function confirmAndRecord() {
     body: JSON.stringify({ pseudo, amount })
   });
   const data = await r.json();
-  if (!r.ok || !data.success) {
-    throw new Error(data.error || 'Donation save failed');
-  }
+  if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
-  // 4) Mise à jour immédiate de l’UI (en plus du socket “update”)
+  // 4) Mise à jour immédiate de l’UI
   applyTotals(data.total, data.last);
 
-  // 5) Animation
+  // 5) Animations
   createParticles(amount);
 
-  // 6) Recréer un PaymentIntent pour le prochain don
+  // 6) Préparer prochain don
   await mountPaymentElement();
 }
 
 // Init + events
 document.addEventListener('DOMContentLoaded', () => {
-  mountPaymentElement().catch(err => showError('Stripe init error: ' + err.message));
+  mountPaymentElement().catch(err => showError('Stripe init error: ' + (err.message || err)));
 });
 
 donateBtn.addEventListener('click', async () => {
@@ -185,7 +196,7 @@ donateBtn.addEventListener('click', async () => {
   try {
     await confirmAndRecord();
   } catch (e) {
-    showError(e.message);
+    showError(e.message || String(e));
   } finally {
     donateBtn.disabled = false;
   }

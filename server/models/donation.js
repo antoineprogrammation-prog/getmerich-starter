@@ -1,4 +1,4 @@
-const pool = require('../db');
+const { pool } = require('../db');
 
 async function addDonation(pseudo, amount) {
   const res = await pool.query(
@@ -14,9 +14,8 @@ async function getTotalDonations() {
 }
 
 async function getLastDonation() {
-  const res = await pool.query('SELECT * FROM donations ORDER BY created_at DESC LIMIT 1');
+  const res = await pool.query('SELECT * FROM donations ORDER BY created_at DESC, id DESC LIMIT 1');
   return res.rows[0] || null;
 }
 
 module.exports = { addDonation, getTotalDonations, getLastDonation };
-

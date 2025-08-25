@@ -26,8 +26,18 @@
 
     <div id="progress-bar"><div id="progress"></div></div>
 
+    <!-- NEW: Reveal section -->
+    <div class="reveal">
+      <div class="reveal-title">Make a donation to reveal who I am</div>
+      <div class="reveal-stage">
+        <canvas id="photoCanvas"></canvas>
+        <canvas id="maskCanvas"></canvas>
+      </div>
+      <div class="reveal-legend">1$ = 1 pixel revealed</div>
+    </div>
+
     <input type="text" id="pseudo" placeholder="Your pseudo" />
-    <input type="number" id="amount" placeholder="Amount in $" min="1" />
+    <input type="number" id="amount" placeholder="Amount in $" min="1" value="5" />
 
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>

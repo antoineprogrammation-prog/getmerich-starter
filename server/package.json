@@ -1,0 +1,10 @@
+{
+  "name": "getmerich-server",
+  "version": "1.0.0",
+  "engines": { "node": ">=18 <=22" },
+  "scripts": {
+    "start": "node index.js",
+    "build": "echo \"no build step\"",
+    "postinstall": "echo \"skip postinstall\""
+  }
+}

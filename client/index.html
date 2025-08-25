@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get Me Rich</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/socket.io/client-dist/socket.io.min.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+<div class="container">
+  <h1>Get Me Rich</h1>
+
+  <div id="totalContainer">
+    <span id="total">0</span> / 1 000 000$
+  </div>
+
+  <div id="last">Last donor: -</div>
+
+  <div id="progress-bar"><div id="progress"></div></div>
+
+  <input type="text" id="pseudo" placeholder="Your pseudo">
+  <input type="number" id="amount" placeholder="Amount in $">
+
+  <div id="payment-element"></div>
+  <button id="donateBtn" disabled>Donate</button>
+</div>
+
+<canvas id="animationCanvas"></canvas>
+<audio id="coinSound" src="assets/sound.mp3"></audio>
+<script src="main.js"></script>
+</body>
+</html>
+

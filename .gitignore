@@ -1,0 +1,14 @@
+# Node modules
+node_modules/
+
+# Env files contenant secrets
+server/.env
+client/.env
+
+# Logs
+logs/
+*.log
+
+# Builds front (si tu buildes localement)
+client/build/
+dist/

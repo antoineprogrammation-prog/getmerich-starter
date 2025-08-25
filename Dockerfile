@@ -2,16 +2,15 @@
 FROM node:20-alpine
 
 # ---- Workdir ----
-WORKDIR /app
-
-# ---- Copy server package files first (cache-friendly) ----
-COPY server/package*.json ./server/
-
-# ---- Install deps ----
 WORKDIR /app/server
+
+# ---- Copy package files ----
+COPY server/package*.json ./
+
+# ---- Install dependencies ----
 RUN npm install --no-audit --no-fund
 
-# ---- Copy server source ----
+# ---- Copy source code ----
 COPY server/ .
 
 # ---- Env ----
@@ -20,4 +19,4 @@ ENV PORT=3000
 
 # ---- Expose & Start ----
 EXPOSE 3000
-CMD ["node", "index.js"]
+CMD ["npm", "start"]

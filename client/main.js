@@ -69,14 +69,19 @@ async function mountPaymentElement() {
   clearError();
   const { publishableKey, mode } = await fetchConfig();
   stripe = Stripe(publishableKey);
+
+  // On lit toujours la valeur actuelle du champ "amount"
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
+
   const clientSecret = await createPaymentIntent(amount, pseudo);
+
   if (paymentElement) paymentElement.destroy();
   elements = stripe.elements({ clientSecret });
   paymentElement = elements.create('payment');
   paymentElement.mount('#payment-element');
   donateBtn.disabled = false;
+
   if (mode === 'live') {
     showError('Payments are processed live. Test cards will be declined.');
     setTimeout(() => clearError(), 6000);
@@ -86,7 +91,7 @@ async function mountPaymentElement() {
 // --- UI net ---
 function applyTotalsNet(totalNet, last) {
   const t = Number(totalNet) || 0;
-  totalEl.textContent = t.toFixed(2).replace(/\.00$/, ''); // joli pour entiers
+  totalEl.textContent = t.toFixed(2).replace(/\.00$/, '');
   progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
   lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
 }
@@ -138,28 +143,39 @@ animate();
 async function confirmAndRecord() {
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
+
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
+
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
+
   const r = await fetch('/api/donate', {
     method: 'POST', headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ pseudo, amount })
   });
   const data = await r.json();
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
-  // Mise à jour immédiate avec le NET renvoyé
+
   applyTotalsNet(data.totalNet, data.last);
   createParticles(amount);
+
+  // On remonte un nouveau PaymentElement pour le prochain don
   await mountPaymentElement();
 }
 
-// Init + events
+// --- Init + events ---
 document.addEventListener('DOMContentLoaded', () => {
   mountPaymentElement().catch(err => showError('Stripe init error: ' + (err.message || err)));
 });
+
 donateBtn.addEventListener('click', async () => {
   donateBtn.disabled = true; clearError();
   try { await confirmAndRecord(); }
   catch (e) { showError(e.message || String(e)); }
   finally { donateBtn.disabled = false; }
+});
+
+// --- Important: recréer PaymentIntent si le donateur change le montant ---
+amountEl.addEventListener('change', () => {
+  mountPaymentElement().catch(err => showError('Stripe reinit error: ' + (err.message || err)));
 });

@@ -9,19 +9,16 @@ const configSummary = {
   hasDbName: !!process.env.DB_NAME,
   hasDbPassword: !!process.env.DB_PASSWORD,
   pgSslMode: process.env.PGSSLMODE || null,
-  mode: null // 'database_url' | 'db_vars' | 'none'
+  mode: null
 };
 
-// 1) Cas Railway: DATABASE_URL
 if (configSummary.hasDatabaseUrl) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
   });
   configSummary.mode = 'database_url';
-}
-// 2) Cas variables séparées (local ou autre)
-else if (configSummary.hasDbUser && configSummary.hasDbHost && configSummary.hasDbName) {
+} else if (configSummary.hasDbUser && configSummary.hasDbHost && configSummary.hasDbName) {
   pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
@@ -31,29 +28,38 @@ else if (configSummary.hasDbUser && configSummary.hasDbHost && configSummary.has
     ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
   });
   configSummary.mode = 'db_vars';
-}
-// 3) Pas de config: on crée un faux pool qui renvoie une erreur explicite
-else {
+} else {
   configSummary.mode = 'none';
   pool = {
     query: async () => {
       throw new Error(
-        'DB not configured: set DATABASE_URL (recommended) ' +
-        'or DB_USER/DB_PASSWORD/DB_HOST/DB_NAME environment variables.'
+        'DB not configured: set DATABASE_URL (recommended) or DB_USER/DB_PASSWORD/DB_HOST/DB_NAME environment variables.'
       );
     }
   };
 }
 
-// Initialisation auto de la table
+// Création table + colonne net_amount si absentes
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS donations (
       id SERIAL PRIMARY KEY,
       pseudo VARCHAR(50) NOT NULL,
-      amount NUMERIC(10,2) NOT NULL,
+      amount NUMERIC(10,2) NOT NULL,      -- montant brut
+      net_amount NUMERIC(10,2),           -- montant net (après frais)
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `);
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='donations' AND column_name='net_amount'
+      ) THEN
+        ALTER TABLE donations ADD COLUMN net_amount NUMERIC(10,2);
+      END IF;
+    END$$;
   `);
 }
 

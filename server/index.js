@@ -6,7 +6,7 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const donationRoutes = require('./routes/donations');
-const { getTotalDonations, getLastDonation } = require('./models/donation');
+const { getTotals, getLastDonation } = require('./models/donation');
 const { initDB, pool, configSummary } = require('./db');
 
 const app = express();
@@ -27,20 +27,16 @@ app.get('/api/config', (_req, res) => {
 // API dons
 app.use('/api', donationRoutes);
 
-// --- Health & Diagnostics DB ---
+// Health
 app.get('/api/health', async (_req, res) => {
   try {
     const now = await pool.query('SELECT NOW()');
-    return res.json({
-      ok: true,
-      now: now.rows[0].now,
-      db: { mode: configSummary.mode }
-    });
+    return res.json({ ok: true, now: now.rows[0].now, db: { mode: configSummary.mode } });
   } catch (e) {
     return res.status(500).json({
       ok: false,
       error: e && e.message ? e.message : 'Unknown DB error',
-      db: configSummary // n’expose pas de secrets, juste la présence des variables
+      db: configSummary
     });
   }
 });
@@ -54,18 +50,18 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(clientDir, 'index.html'));
 });
 
-// WebSocket: état initial
+// WebSocket: état initial → envoie le total NET
 io.on('connection', async (socket) => {
   try {
-    const total = await getTotalDonations();
+    const totals = await getTotals();
     const last = await getLastDonation();
-    socket.emit('update', { total, last });
+    socket.emit('update', { totalNet: totals.totalNet, last });
   } catch (e) {
     console.error('WS init error:', e);
   }
 });
 
-// Démarrage + init DB
+// Boot
 (async () => {
   try {
     await initDB();
@@ -73,7 +69,6 @@ io.on('connection', async (socket) => {
   } catch (e) {
     console.error('DB init FAILED:', e.message || e);
   }
-
   const PORT = 3000; // Domaine Railway configuré sur 3000
   server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 })();

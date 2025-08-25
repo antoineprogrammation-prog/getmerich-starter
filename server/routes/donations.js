@@ -5,28 +5,36 @@ const { addDonation, getTotalDonations, getLastDonation } = require('../models/d
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// PaymentIntent pour le Payment Element
+// Crée un PaymentIntent pour le Payment Element
 router.post('/create-payment-intent', async (req, res) => {
   try {
-    const { amount = 1, pseudo = 'Anonymous' } = req.body;
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(Number(amount) * 100),
+    const rawAmount = Number(req.body?.amount ?? 1);
+    const pseudo = (req.body?.pseudo || 'Anonymous').toString().slice(0, 50);
+
+    // Montant minimal: 1 USD
+    const amount = Math.max(1, Math.floor(rawAmount));
+
+    const pi = await stripe.paymentIntents.create({
+      amount: amount * 100,
       currency: 'usd',
       automatic_payment_methods: { enabled: true },
       metadata: { pseudo }
     });
-    res.json({ clientSecret: paymentIntent.client_secret });
+
+    res.json({ clientSecret: pi.client_secret });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+    console.error('create-payment-intent error:', e);
+    res.status(400).json({ error: e.message || 'Stripe error creating PaymentIntent' });
   }
 });
 
-// Enregistrer le don après confirmation (côté front on appelle ceci après confirm)
+// Enregistre le don (appelé côté front après confirmPayment)
 router.post('/donate', async (req, res) => {
   try {
-    const { pseudo = 'Anonymous', amount = 0 } = req.body;
-    const donation = await addDonation(pseudo, Number(amount));
+    const pseudo = (req.body?.pseudo || 'Anonymous').toString().slice(0, 50);
+    const amount = Math.max(1, Math.floor(Number(req.body?.amount ?? 0)));
+
+    const donation = await addDonation(pseudo, amount);
 
     // Broadcast temps réel
     const io = req.app.get('io');
@@ -38,12 +46,11 @@ router.post('/donate', async (req, res) => {
 
     res.json({ success: true, donation });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+    console.error('donate error:', e);
+    res.status(500).json({ error: e.message || 'DB error' });
   }
 });
 
-// Endpoints de lecture
 router.get('/total', async (_req, res) => {
   const total = await getTotalDonations();
   res.json({ total });

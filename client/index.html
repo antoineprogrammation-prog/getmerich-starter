@@ -13,6 +13,8 @@
   <div class="container">
     <h1>Get Me Rich</h1>
 
+    <div id="notice" class="notice hidden"></div>
+
     <div id="totalContainer">
       <span id="total">0</span> / 1 000 000$
     </div>
@@ -22,7 +24,7 @@
     <div id="progress-bar"><div id="progress"></div></div>
 
     <input type="text" id="pseudo" placeholder="Your pseudo" />
-    <input type="number" id="amount" placeholder="Amount in $" />
+    <input type="number" id="amount" placeholder="Amount in $" min="1" />
 
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>
@@ -32,4 +34,3 @@
   <audio id="coinSound" src="/assets/sound.mp3"></audio>
 </body>
 </html>
-

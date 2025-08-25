@@ -1,6 +1,17 @@
-// Même origine: l'API est servie par le même service Railway
-const socket = io(); // auto-connect to same origin
+// --- Helpers UI ---
+const notice = document.getElementById('notice');
+function showError(msg) {
+  notice.className = 'notice error';
+  notice.textContent = msg;
+  notice.classList.remove('hidden');
+}
+function clearError() {
+  notice.className = 'notice hidden';
+  notice.textContent = '';
+}
 
+// --- WebSocket sur même origine ---
+const socket = io();
 const totalEl = document.getElementById('total');
 const lastEl = document.getElementById('last');
 const progressEl = document.getElementById('progress');
@@ -9,6 +20,7 @@ const pseudoEl = document.getElementById('pseudo');
 const amountEl = document.getElementById('amount');
 const coinSound = document.getElementById('coinSound');
 
+// --- Canvas & animation ---
 const canvas = document.getElementById('animationCanvas');
 const ctx = canvas.getContext('2d');
 function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
@@ -18,41 +30,65 @@ let particles = [];
 const coinsImg = new Image(); coinsImg.src = '/assets/coins.png';
 const billsImg = new Image(); billsImg.src = '/assets/bills.png';
 
-// --- Stripe Payment Element ---
-let stripe, elements, paymentElement;
-document.addEventListener('DOMContentLoaded', async () => {
-  // 1) Initialiser Stripe avec ta clé publique test
-  // 👉 Remplace pk_test_xxx par ta clé publique test (visible côté client)
-  stripe = Stripe('pk_test_xxxxxxxxxxxxxxxxxxxxxxxxx'); // TODO: remplace
+// --- Stripe ---
+let stripe, elements, paymentElement, currentClientSecret = null;
 
-  await initPaymentElement();
-  donateBtn.disabled = false;
-});
+// récupère pk + mode depuis le serveur
+async function fetchConfig() {
+  const r = await fetch('/api/config');
+  const data = await r.json();
+  if (!data.publishableKey) throw new Error('Stripe publishable key missing on server.');
+  return data;
+}
 
-async function initPaymentElement() {
-  const amount = parseFloat(amountEl.value) || 1;
-  const pseudo = pseudoEl.value || 'Anonymous';
-
-  const resp = await fetch('/api/create-payment-intent', {
+async function createPaymentIntent(amount, pseudo) {
+  const r = await fetch('/api/create-payment-intent', {
     method: 'POST',
     headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ amount, pseudo })
   });
-  const { clientSecret } = await resp.json();
-
-  elements = stripe.elements({ clientSecret });
-  paymentElement = elements.create('payment');
-  paymentElement.mount('#payment-element');
+  const data = await r.json();
+  if (!r.ok || !data.clientSecret) {
+    throw new Error(data.error || 'PaymentIntent creation failed.');
+  }
+  return data.clientSecret;
 }
 
-// --- WebSocket update initial + temps réel ---
+async function mountPaymentElement() {
+  clearError();
+
+  // 1) config Stripe
+  const { publishableKey, mode } = await fetchConfig();
+  stripe = Stripe(publishableKey);
+
+  // 2) créer PI
+  const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
+  const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
+  currentClientSecret = await createPaymentIntent(amount, pseudo);
+
+  // 3) monter l'Element (détruit l'ancien si existe)
+  if (paymentElement) paymentElement.destroy();
+  elements = stripe.elements({ clientSecret: currentClientSecret });
+  paymentElement = elements.create('payment');
+  paymentElement.mount('#payment-element');
+
+  donateBtn.disabled = false;
+
+  // Message utile si tu es en live
+  if (mode === 'live') {
+    showError('Live mode: utilisez une vraie carte (les cartes de test seront refusées).');
+    setTimeout(() => clearError(), 6000);
+  }
+}
+
+// --- WebSocket état initial + updates ---
 socket.on('update', ({ total, last }) => {
   totalEl.textContent = total;
   lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
   progressEl.style.width = `${Math.min((Number(total)||0) / 1000000 * 100, 100)}%`;
 });
 
-// --- Animation réaliste limitée ---
+// --- Animation réaliste et limitée ---
 function createParticles(amount) {
   const maxCoins = Math.min(Math.max(3, Math.floor(amount / 5)), 10);
   const maxBills = amount >= 20 ? Math.min(Math.floor(amount / 20), 5) : 0;
@@ -80,7 +116,6 @@ function createParticles(amount) {
     });
   }
 }
-
 function animate() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   for (let i = particles.length - 1; i >= 0; i--) {
@@ -91,14 +126,9 @@ function animate() {
     ctx.drawImage(p.img, -p.img.width/2, -p.img.height/2);
     ctx.restore();
 
-    p.x += p.vx;
-    p.y += p.vy;
-    p.r += p.vr;
-
+    p.x += p.vx; p.y += p.vy; p.r += p.vr;
     if (p.img === coinsImg && p.y + (p.img.height/2) > canvas.height) {
-      p.vy *= -0.5;
-      p.y = canvas.height - (p.img.height/2);
-      p.vx *= 0.7;
+      p.vy *= -0.5; p.y = canvas.height - (p.img.height/2); p.vx *= 0.7;
     }
     if (p.y > canvas.height + 120) particles.splice(i, 1);
   }
@@ -106,39 +136,44 @@ function animate() {
 }
 animate();
 
-// --- Click Donate ---
-donateBtn.addEventListener('click', async () => {
-  donateBtn.disabled = true;
+// --- Flux "Donate" ---
+async function confirmAndRecord() {
+  // 1) Confirmer le paiement (le Payment Element s’occupe du moyen de paiement)
+  const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+  if (error) throw new Error(error.message || 'Payment failed');
 
-  const amount = parseFloat(amountEl.value) || 1;
-  const pseudo = pseudoEl.value || 'Anonymous';
-
-  // Confirmer le paiement (Payment Element)
-  const { error } = await stripe.confirmPayment({
-    elements,
-    // Pas de redirection nécessaire, on reste sur la page
-    redirect: 'if_required'
-  });
-  if (error) {
-    alert(error.message);
-    donateBtn.disabled = false;
-    return;
-  }
-
-  // Son au clic OK (débloqué par interaction)
+  // 2) Jouer le son (interaction OK)
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
-  // Enregistrer le don (DB) + socket.io broadcast côté serveur
+  // 3) Enregistrer le don (DB) + broadcast serveur
+  const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
+  const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
   await fetch('/api/donate', {
     method: 'POST',
     headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ pseudo, amount })
   });
 
-  // Animation visuelle
+  // 4) Animation
   createParticles(amount);
 
-  // Ré-initialiser un nouveau PaymentIntent pour un nouveau don
-  await initPaymentElement();
-  donateBtn.disabled = false;
+  // 5) Recréer un nouveau PI pour un prochain don
+  await mountPaymentElement();
+}
+
+// Init + events
+document.addEventListener('DOMContentLoaded', () => {
+  mountPaymentElement().catch(err => showError('Stripe init error: ' + err.message));
+});
+
+donateBtn.addEventListener('click', async () => {
+  donateBtn.disabled = true;
+  clearError();
+  try {
+    await confirmAndRecord();
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    donateBtn.disabled = false;
+  }
 });

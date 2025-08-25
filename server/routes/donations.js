@@ -1,45 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const Stripe = require('stripe');
-require('dotenv').config();
 const { addDonation, getTotalDonations, getLastDonation } = require('../models/donation');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Créer PaymentIntent pour Payment Element
+// PaymentIntent pour le Payment Element
 router.post('/create-payment-intent', async (req, res) => {
-  const { pseudo, amount } = req.body;
-
   try {
+    const { amount = 1, pseudo = 'Anonymous' } = req.body;
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount*100),
+      amount: Math.round(Number(amount) * 100),
       currency: 'usd',
       automatic_payment_methods: { enabled: true },
       metadata: { pseudo }
     });
     res.json({ clientSecret: paymentIntent.client_secret });
-  } catch(err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
   }
 });
 
-// Ajouter le don dans la base
+// Enregistrer le don après confirmation (côté front on appelle ceci après confirm)
 router.post('/donate', async (req, res) => {
-  const { pseudo, amount } = req.body;
   try {
-    const donation = await addDonation(pseudo, amount);
+    const { pseudo = 'Anonymous', amount = 0 } = req.body;
+    const donation = await addDonation(pseudo, Number(amount));
 
-    // Envoyer l'update via WebSocket
-    if (req.app.get('io')) {
+    // Broadcast temps réel
+    const io = req.app.get('io');
+    if (io) {
       const total = await getTotalDonations();
       const last = await getLastDonation();
-      req.app.get('io').emit('update', { total, last });
+      io.emit('update', { total, last });
     }
 
     res.json({ success: true, donation });
-  } catch(err) {
-    res.status(500).json({ error: err.message });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
   }
+});
+
+// Endpoints de lecture
+router.get('/total', async (_req, res) => {
+  const total = await getTotalDonations();
+  res.json({ total });
+});
+
+router.get('/last', async (_req, res) => {
+  const last = await getLastDonation();
+  res.json({ last });
 });
 
 module.exports = router;

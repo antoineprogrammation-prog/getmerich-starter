@@ -3,13 +3,11 @@ require('dotenv').config();
 
 let pool;
 if (process.env.DATABASE_URL) {
-  // Cas Railway / URL unique
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : undefined,
   });
 } else {
-  // Cas local / variables séparées
   pool = new Pool({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,

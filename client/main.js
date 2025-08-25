@@ -1,4 +1,5 @@
-const socket = io('http://localhost:3000');
+// Même origine: l'API est servie par le même service Railway
+const socket = io(); // auto-connect to same origin
 
 const totalEl = document.getElementById('total');
 const lastEl = document.getElementById('last');
@@ -10,99 +11,134 @@ const coinSound = document.getElementById('coinSound');
 
 const canvas = document.getElementById('animationCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resize); resize();
 
-let total = 0;
-let lastDonation = { pseudo: '-', amount: 0 };
 let particles = [];
+const coinsImg = new Image(); coinsImg.src = '/assets/coins.png';
+const billsImg = new Image(); billsImg.src = '/assets/bills.png';
 
-const coinsImg = new Image(); coinsImg.src='assets/coins.png';
-const billsImg = new Image(); billsImg.src='assets/bills.png';
+// --- Stripe Payment Element ---
+let stripe, elements, paymentElement;
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1) Initialiser Stripe avec ta clé publique test
+  // 👉 Remplace pk_test_xxx par ta clé publique test (visible côté client)
+  stripe = Stripe('pk_test_xxxxxxxxxxxxxxxxxxxxxxxxx'); // TODO: remplace
 
-// WebSocket update
-socket.on('update', ({ total: t, last }) => {
-  total = t;
-  totalEl.textContent = total;
-  lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : '-';
-  progressEl.style.width = `${Math.min(total / 1000000 * 100, 100)}%`;
+  await initPaymentElement();
+  donateBtn.disabled = false;
 });
 
-// Animation
-function createParticles(amount) {
-  const maxCoins = Math.min(amount, 10);
-  const maxBills = amount >= 20 ? Math.min(amount/2, 5) : 0;
-
-  for(let i=0;i<maxCoins;i++){
-    particles.push({ x:Math.random()*canvas.width, y:-50, vy:2+Math.random()*2, vx:Math.random()-0.5, rotation:Math.random()*Math.PI*2, rotationSpeed:(Math.random()-0.5)*0.2, img:coinsImg });
-  }
-  for(let i=0;i<maxBills;i++){
-    particles.push({ x:Math.random()*canvas.width, y:-50, vy:1+Math.random()*1.5, vx:Math.random()*0.5-0.25, rotation:Math.random()*Math.PI*2, rotationSpeed:(Math.random()-0.5)*0.05, img:billsImg });
-  }
-}
-
-function animate(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  particles.forEach((p,i)=>{
-    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rotation); ctx.drawImage(p.img,-p.img.width/2,-p.img.height/2); ctx.restore();
-    p.y+=p.vy; p.x+=p.vx; p.rotation+=p.rotationSpeed;
-    if(p.img===coinsImg && p.y+p.img.height/2>canvas.height){p.vy*=-0.5; p.y=canvas.height-p.img.height/2; p.vx*=0.7;}
-    if(p.y>canvas.height+100) particles.splice(i,1);
-  });
-  requestAnimationFrame(animate);
-}
-animate();
-
-// Stripe Payment Element
-const stripe = Stripe('pk_live_51RzitcB4wKbmyg8LFlaAQ403wWaMaijHAzOJnNihnru0NEVJY9kkzkYzqwHSt2yTBVrsM4G16qFLbXqPpXqrxk8O00yiFIgwWN'); 
-let elements, paymentElement;
-
-async function initPayment() {
-  const pseudo = pseudoEl.value || 'Anonymous';
+async function initPaymentElement() {
   const amount = parseFloat(amountEl.value) || 1;
+  const pseudo = pseudoEl.value || 'Anonymous';
 
-  const { clientSecret } = await fetch('http://localhost:3000/api/create-payment-intent', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ pseudo, amount })
-  }).then(r=>r.json());
+  const resp = await fetch('/api/create-payment-intent', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ amount, pseudo })
+  });
+  const { clientSecret } = await resp.json();
 
   elements = stripe.elements({ clientSecret });
   paymentElement = elements.create('payment');
   paymentElement.mount('#payment-element');
-
-  donateBtn.disabled = false;
 }
 
-initPayment();
+// --- WebSocket update initial + temps réel ---
+socket.on('update', ({ total, last }) => {
+  totalEl.textContent = total;
+  lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
+  progressEl.style.width = `${Math.min((Number(total)||0) / 1000000 * 100, 100)}%`;
+});
 
-donateBtn.addEventListener('click', async ()=>{
+// --- Animation réaliste limitée ---
+function createParticles(amount) {
+  const maxCoins = Math.min(Math.max(3, Math.floor(amount / 5)), 10);
+  const maxBills = amount >= 20 ? Math.min(Math.floor(amount / 20), 5) : 0;
+
+  for (let i = 0; i < maxCoins; i++) {
+    particles.push({
+      img: coinsImg,
+      x: Math.random() * canvas.width,
+      y: -50,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: 2 + Math.random() * 2,
+      r: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.2
+    });
+  }
+  for (let i = 0; i < maxBills; i++) {
+    particles.push({
+      img: billsImg,
+      x: Math.random() * canvas.width,
+      y: -50,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: 1 + Math.random() * 1.2,
+      r: Math.random() * Math.PI * 2,
+      vr: (Math.random() - 0.5) * 0.05
+    });
+  }
+}
+
+function animate() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.r);
+    ctx.drawImage(p.img, -p.img.width/2, -p.img.height/2);
+    ctx.restore();
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.r += p.vr;
+
+    if (p.img === coinsImg && p.y + (p.img.height/2) > canvas.height) {
+      p.vy *= -0.5;
+      p.y = canvas.height - (p.img.height/2);
+      p.vx *= 0.7;
+    }
+    if (p.y > canvas.height + 120) particles.splice(i, 1);
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+
+// --- Click Donate ---
+donateBtn.addEventListener('click', async () => {
   donateBtn.disabled = true;
-  const pseudo = pseudoEl.value || 'Anonymous';
-  const amount = parseFloat(amountEl.value) || 1;
 
+  const amount = parseFloat(amountEl.value) || 1;
+  const pseudo = pseudoEl.value || 'Anonymous';
+
+  // Confirmer le paiement (Payment Element)
   const { error } = await stripe.confirmPayment({
     elements,
-    confirmParams: { return_url: window.location.href }
+    // Pas de redirection nécessaire, on reste sur la page
+    redirect: 'if_required'
   });
-
-  if(error){
+  if (error) {
     alert(error.message);
     donateBtn.disabled = false;
     return;
   }
 
-  // Jouer son et animations
-  coinSound.currentTime=0; coinSound.play().catch(()=>console.log('Sound bloqué'));
-  createParticles(amount);
+  // Son au clic OK (débloqué par interaction)
+  try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
-  // Enregistrer le don dans la base
-  await fetch('http://localhost:3000/api/donate', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({ pseudo, amount })
+  // Enregistrer le don (DB) + socket.io broadcast côté serveur
+  await fetch('/api/donate', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ pseudo, amount })
   });
 
-  // Re-initialiser Payment Element pour un nouveau paiement
-  initPayment();
+  // Animation visuelle
+  createParticles(amount);
+
+  // Ré-initialiser un nouveau PaymentIntent pour un nouveau don
+  await initPaymentElement();
+  donateBtn.disabled = false;
 });

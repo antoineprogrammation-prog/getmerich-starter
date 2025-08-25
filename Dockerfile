@@ -1,22 +1,22 @@
-# ---- Base image ----
 FROM node:20-alpine
 
-# ---- Workdir ----
+# API workdir
 WORKDIR /app/server
 
-# ---- Copy package files ----
+# Install deps
 COPY server/package*.json ./
-
-# ---- Install dependencies ----
 RUN npm install --no-audit --no-fund
 
-# ---- Copy source code ----
+# Copy API source
 COPY server/ .
 
-# ---- Env ----
+# Copy static client to /app/client (servi par Express)
+WORKDIR /app
+COPY client ./client
+
 ENV NODE_ENV=production
 ENV PORT=3000
-
-# ---- Expose & Start ----
 EXPOSE 3000
+
+WORKDIR /app/server
 CMD ["npm", "start"]

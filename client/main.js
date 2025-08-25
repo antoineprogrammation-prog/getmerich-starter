@@ -1,5 +1,10 @@
 // --- Helpers UI ---
-const notice = document.getElementById('notice');
+const notice = document.getElementById('notice') || (() => {
+  const n = document.createElement('div');
+  n.id = 'notice'; n.className = 'notice hidden';
+  document.querySelector('.container').prepend(n);
+  return n;
+})();
 function showError(msg) {
   notice.className = 'notice error';
   notice.textContent = msg;
@@ -31,9 +36,8 @@ const coinsImg = new Image(); coinsImg.src = '/assets/coins.png';
 const billsImg = new Image(); billsImg.src = '/assets/bills.png';
 
 // --- Stripe ---
-let stripe, elements, paymentElement, currentClientSecret = null;
+let stripe, elements, paymentElement;
 
-// récupère pk + mode depuis le serveur
 async function fetchConfig() {
   const r = await fetch('/api/config');
   const data = await r.json();
@@ -56,37 +60,38 @@ async function createPaymentIntent(amount, pseudo) {
 
 async function mountPaymentElement() {
   clearError();
-
-  // 1) config Stripe
   const { publishableKey, mode } = await fetchConfig();
   stripe = Stripe(publishableKey);
 
-  // 2) créer PI
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
-  currentClientSecret = await createPaymentIntent(amount, pseudo);
+  const clientSecret = await createPaymentIntent(amount, pseudo);
 
-  // 3) monter l'Element (détruit l'ancien si existe)
   if (paymentElement) paymentElement.destroy();
-  elements = stripe.elements({ clientSecret: currentClientSecret });
+  elements = stripe.elements({ clientSecret });
   paymentElement = elements.create('payment');
   paymentElement.mount('#payment-element');
 
   donateBtn.disabled = false;
 
-  // Message utile si tu es en live
   if (mode === 'live') {
     showError('Live mode: utilisez une vraie carte (les cartes de test seront refusées).');
     setTimeout(() => clearError(), 6000);
   }
 }
 
-// --- WebSocket état initial + updates ---
+// --- WebSocket: mise à jour temps réel reçue du serveur ---
 socket.on('update', ({ total, last }) => {
-  totalEl.textContent = total;
-  lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
-  progressEl.style.width = `${Math.min((Number(total)||0) / 1000000 * 100, 100)}%`;
+  applyTotals(total, last);
 });
+
+// --- Helpers UI pour total/last ---
+function applyTotals(total, last) {
+  const t = Number(total) || 0;
+  totalEl.textContent = t;
+  progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
+  lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
+}
 
 // --- Animation réaliste et limitée ---
 function createParticles(amount) {
@@ -138,26 +143,34 @@ animate();
 
 // --- Flux "Donate" ---
 async function confirmAndRecord() {
-  // 1) Confirmer le paiement (le Payment Element s’occupe du moyen de paiement)
+  // 1) Confirmer le paiement
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
-  // 2) Jouer le son (interaction OK)
+  // 2) Son (interaction OK)
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
-  // 3) Enregistrer le don (DB) + broadcast serveur
+  // 3) Enregistrer le don et récupérer total/last directement
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
-  await fetch('/api/donate', {
+
+  const r = await fetch('/api/donate', {
     method: 'POST',
     headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ pseudo, amount })
   });
+  const data = await r.json();
+  if (!r.ok || !data.success) {
+    throw new Error(data.error || 'Donation save failed');
+  }
 
-  // 4) Animation
+  // 4) Mise à jour immédiate de l’UI (en plus du socket “update”)
+  applyTotals(data.total, data.last);
+
+  // 5) Animation
   createParticles(amount);
 
-  // 5) Recréer un nouveau PI pour un prochain don
+  // 6) Recréer un PaymentIntent pour le prochain don
   await mountPaymentElement();
 }
 

@@ -18,15 +18,12 @@
     <div id="totalContainer">
       <span id="total">0</span> / 1 000 000$ (net)
     </div>
-    <div class="fineprint">
-      Payment processing fees are included; the amount shown reflects what we actually receive.
-    </div>
 
-    <div id="last">Last donor: -</div>
-
+    <!-- Thanks text + progress -->
+    <div id="last">Thanks to the last donor : -</div>
     <div id="progress-bar"><div id="progress"></div></div>
 
-    <!-- NEW: Reveal section -->
+    <!-- Reveal section -->
     <div class="reveal">
       <div class="reveal-title">Make a donation to reveal who I am</div>
       <div class="reveal-stage">
@@ -38,6 +35,11 @@
 
     <input type="text" id="pseudo" placeholder="Your pseudo" />
     <input type="number" id="amount" placeholder="Amount in $" min="1" value="5" />
+
+    <!-- ✅ Phrase déplacée ici, sous le champ Amount -->
+    <div class="fineprint">
+      Payment processing fees are included; the amount shown reflects what we actually receive.
+    </div>
 
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>

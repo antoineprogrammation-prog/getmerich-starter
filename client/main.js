@@ -61,43 +61,41 @@ let coveredLen = 0;    // longueur active
 let revealedCount = 0; // combien déjà révélés
 
 async function initRevealStage() {
-  // Taille interne = dimensions visibles du stage pour la photo
-  const stage = document.querySelector('.reveal-stage');
-  const rect = stage.getBoundingClientRect();
-  photoCanvas.width = Math.max(1, Math.floor(rect.width));
-  photoCanvas.height = Math.max(1, Math.floor(rect.height));
+  // Stage en 1080 x 1616 (format photo) en CSS via aspect-ratio
+  // Ici on règle la résolution interne de la photo au pixel près pour un rendu net
+  photoCanvas.width = 1080;
+  photoCanvas.height = 1616;
 
   // Masque = grille fixe 1000x1000 (upscaled via CSS)
   maskCanvas.width = GRID;
   maskCanvas.height = GRID;
 
-  // 1) Charger ta photo (mets /assets/me.jpg)
+  // Charger ta photo
   try {
     photoImg = await loadImage('/assets/me.jpg');
   } catch (e) {
     showError('Photo not found. Please add /assets/me.jpg');
   }
 
-  // 2) Dessiner la photo (cover). Si pas de photo, on met un dégradé doux pour éviter le noir.
+  // Dessiner la photo (cover)
   drawPhotoCover();
 
-  // 3) Générer un masque doré OPAQUE (aucune transparence au départ)
+  // Générer un masque doré OPAQUE (aucune transparence au départ)
   generateGoldMaskOpaque();
 
-  // 4) Préparer l’indexation des pixels couverts
+  // Préparer l’indexation des pixels couverts
   covered = new Uint32Array(TOTAL_PIXELS);
   for (let i = 0; i < TOTAL_PIXELS; i++) covered[i] = i;
   coveredLen = TOTAL_PIXELS;
   revealedCount = 0;
 }
 
-// Dessine la photo en "cover" dans photoCanvas (ou un fond si photo absente)
+// Dessine la photo en "cover" dans photoCanvas (ou fond doux si absent)
 function drawPhotoCover() {
   const cw = photoCanvas.width, ch = photoCanvas.height;
   photoCtx.clearRect(0,0,cw,ch);
 
   if (!photoImg) {
-    // Fond doux si pas d'image pour éviter le "noir"
     const g = photoCtx.createLinearGradient(0,0, cw,ch);
     g.addColorStop(0, '#111'); g.addColorStop(1, '#222');
     photoCtx.fillStyle = g;
@@ -105,20 +103,19 @@ function drawPhotoCover() {
     return;
   }
 
-  // cover
   const iw = photoImg.width, ih = photoImg.height;
   const cr = cw / ch;
   const ir = iw / ih;
 
   let sx, sy, sw, sh;
   if (ir > cr) {
-    // image plus large: on coupe en largeur
+    // image plus large: couper en largeur
     sh = ih;
     sw = ih * cr;
     sx = (iw - sw) / 2;
     sy = 0;
   } else {
-    // image plus haute: on coupe en hauteur
+    // image plus haute: couper en hauteur
     sw = iw;
     sh = iw / cr;
     sx = 0;
@@ -127,15 +124,13 @@ function drawPhotoCover() {
   photoCtx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, cw, ch);
 }
 
-// Génère un masque doré opaque (alpha 255 partout) → pas de noir
+// Masque doré opaque
 function generateGoldMaskOpaque() {
-  // Fond or de secours (double sécurité)
   maskCtx.save();
   maskCtx.fillStyle = '#c9a227';
   maskCtx.fillRect(0,0,GRID,GRID);
   maskCtx.restore();
 
-  // ImageData (plus riche en nuances)
   maskImageData = maskCtx.createImageData(GRID, GRID);
   const d = maskImageData.data;
 
@@ -160,7 +155,7 @@ function generateGoldMaskOpaque() {
     d[j]   = r;
     d[j+1] = g;
     d[j+2] = b;
-    d[j+3] = 255; // ✅ OPAQUE
+    d[j+3] = 255; // opaque
   }
 
   maskCtx.putImageData(maskImageData, 0, 0);
@@ -183,7 +178,7 @@ function revealPixels(count) {
       coveredLen--;
 
       const p = idx * 4;
-      d[p + 3] = 0; // transparent → révèle la photo dessous
+      d[p + 3] = 0; // transparent
       revealedCount++;
       if (coveredLen === 0) break;
     }
@@ -193,24 +188,11 @@ function revealPixels(count) {
   }
 }
 
-// Aligne l’état de révélation sur une cible (ex: totalNet en $)
 function revealToTarget(target) {
   const t = Math.max(0, Math.min(TOTAL_PIXELS, Math.floor(target)));
   const need = t - revealedCount;
   if (need > 0) revealPixels(need);
 }
-
-// Resize stage si besoin
-window.addEventListener('resize', () => {
-  if (!photoCanvas || !photoImg) return;
-  const stage = document.querySelector('.reveal-stage');
-  const rect = stage.getBoundingClientRect();
-  photoCanvas.width = Math.max(1, Math.floor(rect.width));
-  photoCanvas.height = Math.max(1, Math.floor(rect.height));
-  drawPhotoCover();
-});
-
-/* ---------- Fin 1M pixels ---------- */
 
 // --- Stripe ---
 let stripe, elements, paymentElement;
@@ -233,7 +215,7 @@ async function createPaymentIntent(amount, pseudo) {
 }
 async function mountPaymentElement() {
   clearError();
-  const { publishableKey, mode } = await fetchConfig();
+  const { publishableKey/*, mode*/ } = await fetchConfig();
   stripe = Stripe(publishableKey);
 
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
@@ -247,20 +229,17 @@ async function mountPaymentElement() {
   paymentElement.mount('#payment-element');
   donateBtn.disabled = false;
 
-  if (mode === 'live') {
-    showError('Payments are processed live. Test cards will be declined.');
-    setTimeout(() => clearError(), 6000);
-  }
+  // ✅ On n'affiche plus l'alerte "live mode"
+  // (rien ici)
 }
 
-// --- UI net + reveal ---
+// --- UI net + thanks text ---
 function applyTotalsNet(totalNet, last) {
   const t = Number(totalNet) || 0;
   totalEl.textContent = t.toFixed(2).replace(/\.00$/, '');
   progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
-  lastEl.textContent = last ? `Last donor: ${last.pseudo} ($${last.amount})` : 'Last donor: -';
+  lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
 
-  // ✅ révélation synchronisée avec le total net
   revealToTarget(t);
 }
 
@@ -324,7 +303,7 @@ async function confirmAndRecord() {
   const data = await r.json();
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
-  applyTotalsNet(data.totalNet, data.last); // jauge + révélation
+  applyTotalsNet(data.totalNet, data.last);
   createParticles(amount);
 
   await mountPaymentElement();

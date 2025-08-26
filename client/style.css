@@ -74,7 +74,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   gap: 40px;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: stretch; /* mêmes hauteurs visuelles possibles */
+  align-items: stretch;
   text-align: left;
 }
 
@@ -87,7 +87,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   padding: 20px 24px;
 }
 
-/* ✅ Colonne gauche centrée sous le titre 1 000 000$ */
+/* Colonne gauche centrée */
 .left-col { text-align: center; }
 
 .left-col .big-goal {
@@ -96,7 +96,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   margin-bottom: 16px;
 }
 
-/* ✅ Une seule ligne par formule */
+/* Une seule ligne par formule */
 .formula-row {
   display: inline-flex;
   align-items: center;
@@ -112,10 +112,34 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   font-size: 70px;
   margin-bottom: 16px;
 }
-
-/* On enlève le scroll : le texte prend sa place naturellement */
 .right-col .thanks-multi {
   font-size: 14px;
   line-height: 1.6;
-  /* plus de max-height ni overflow */
+  /* pas de scroll : texte raccourci pour correspondre à la hauteur de gauche */
+}
+
+/* ---------- Responsive (mobile) ---------- */
+@media (max-width: 1024px) {
+  .container { max-width: 900px; }
+  .main-title { font-size: 64px; }
+  .left-col .big-goal, .right-col .big-thank { font-size: 56px; }
+  .formula-row { font-size: 20px; }
+}
+
+@media (max-width: 768px) {
+  .container { max-width: 640px; padding: 0 14px; }
+  .main-title { font-size: 48px; }
+  .main-title .please { font-size: 0.75em; }
+  .two-columns { gap: 20px; }
+  .two-columns .col { flex: 1 1 100%; }
+  .left-col .big-goal, .right-col .big-thank { font-size: 44px; text-align: center; }
+  .formula-row { font-size: 18px; }
+  .reveal-title { font-size: 18px; }
+  .reveal-legend { font-size: 12px; }
+}
+
+@media (max-width: 420px) {
+  .main-title { font-size: 40px; }
+  .left-col .big-goal, .right-col .big-thank { font-size: 36px; }
+  .formula-row { font-size: 16px; gap: 8px; }
 }

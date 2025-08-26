@@ -143,3 +143,20 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   .left-col .big-goal, .right-col .big-thank { font-size: 36px; }
   .formula-row { font-size: 16px; gap: 8px; }
 }
+/* --- Section multilingue --- */
+.multi-message {
+  margin-top: 50px;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  color: #ddd;
+}
+.multi-message p {
+  margin: 20px 0;
+}
+.multi-message span.flag {
+  margin-right: 8px;
+}

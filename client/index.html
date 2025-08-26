@@ -35,11 +35,9 @@
       </div>
     </div>
 
+    <!-- ✅ Champs avec placeholders -->
     <input type="text" id="pseudo" placeholder="Your pseudo" />
-
-    <!-- ✅ Nouveau label au-dessus du montant -->
-    <label for="amount" class="field-label">Amount in $</label>
-    <input type="number" id="amount" name="amount" min="1" required />
+    <input type="number" id="amount" name="amount" placeholder="Amount in $" min="1" required />
 
     <div class="fineprint">
       Payment processing fees are included; the amount shown reflects what we actually receive.
@@ -48,7 +46,7 @@
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>
 
-    <!-- ✅ Bloc 2 colonnes : gauche chiffres, droite traductions -->
+    <!-- ✅ Bloc 2 colonnes -->
     <div class="two-columns">
       <!-- Gauche -->
       <div class="col left-col">

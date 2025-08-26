@@ -1,4 +1,4 @@
-// --- Helpers UI ---
+// -------------------- Helpers UI --------------------
 const notice = document.getElementById('notice') || (() => {
   const n = document.createElement('div');
   n.id = 'notice'; n.className = 'notice hidden';
@@ -15,8 +15,7 @@ function clearError() {
   notice.textContent = '';
 }
 
-// --- WebSocket (même origine) ---
-const socket = io();
+// Elements already in your HTML
 const totalEl = document.getElementById('total');
 const lastEl = document.getElementById('last');
 const progressEl = document.getElementById('progress');
@@ -25,12 +24,14 @@ const pseudoEl = document.getElementById('pseudo');
 const amountEl = document.getElementById('amount');
 const coinSound = document.getElementById('coinSound');
 
-// ====== 🔊 Déblocage audio mobile ======
+// -------------------- WebSocket --------------------
+const socket = io();
+
+// -------------------- Mobile audio unlock --------------------
 let audioUnlocked = false;
 async function unlockAudio() {
   if (audioUnlocked || !coinSound) return;
   try {
-    // petite lecture silencieuse → pause immédiate → remet au début
     coinSound.muted = true;
     await coinSound.play();
     await new Promise(r => setTimeout(r, 10));
@@ -38,14 +39,13 @@ async function unlockAudio() {
     coinSound.currentTime = 0;
     coinSound.muted = false;
     audioUnlocked = true;
-  } catch { /* ignoré */ }
+  } catch {}
 }
-// 1er geste utilisateur : on déverrouille l’audio (mobile-friendly)
 window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
 window.addEventListener('pointerdown', unlockAudio, { once: true });
 window.addEventListener('keydown', unlockAudio, { once: true });
 
-// --- Canvas & animation confetti coins/bills ---
+// -------------------- Confetti animation (coins/bills) --------------------
 const animCanvas = document.getElementById('animationCanvas');
 const animCtx = animCanvas.getContext('2d');
 function resizeAnim() { animCanvas.width = innerWidth; animCanvas.height = innerHeight; }
@@ -65,204 +65,6 @@ Promise.all([
   loadImage('/assets/bills.png').then(img => (billsImg = img)),
 ]).then(() => { assetsReady = true; }).catch(() => {});
 
-/* ---------- 1,000,000-pixel reveal ---------- */
-const GRID = 1000; // 1000 x 1000 = 1,000,000 pixels
-const TOTAL_PIXELS = GRID * GRID;
-
-const photoCanvas = document.getElementById('photoCanvas');
-const maskCanvas  = document.getElementById('maskCanvas');
-const photoCtx = photoCanvas.getContext('2d');
-const maskCtx  = maskCanvas.getContext('2d', { willReadFrequently: true });
-
-let photoImg = null;
-let maskImageData = null;
-let covered = null;    // Uint32Array indices [0..TOTAL_PIXELS-1]
-let coveredLen = 0;    // longueur active
-let revealedCount = 0; // combien déjà révélés
-
-async function initRevealStage() {
-  // Résolution interne de la photo (alignée au ratio 1080x1616 défini en CSS)
-  photoCanvas.width = 1080;
-  photoCanvas.height = 1616;
-
-  // Masque = grille fixe 1000x1000 (upscaled via CSS)
-  maskCanvas.width = GRID;
-  maskCanvas.height = GRID;
-
-  // Charger ta photo
-  try {
-    photoImg = await loadImage('/assets/me.jpg');
-  } catch (e) {
-    showError('Photo not found. Please add /assets/me.jpg');
-  }
-
-  // Dessiner la photo (cover)
-  drawPhotoCover();
-
-  // Générer un masque doré OPAQUE (aucune transparence au départ)
-  generateGoldMaskOpaque();
-
-  // Préparer l’indexation des pixels couverts
-  covered = new Uint32Array(TOTAL_PIXELS);
-  for (let i = 0; i < TOTAL_PIXELS; i++) covered[i] = i;
-  coveredLen = TOTAL_PIXELS;
-  revealedCount = 0;
-}
-
-// Dessine la photo en "cover" dans photoCanvas (ou fond doux si absent)
-function drawPhotoCover() {
-  const cw = photoCanvas.width, ch = photoCanvas.height;
-  photoCtx.clearRect(0,0,cw,ch);
-
-  if (!photoImg) {
-    const g = photoCtx.createLinearGradient(0,0, cw,ch);
-    g.addColorStop(0, '#111'); g.addColorStop(1, '#222');
-    photoCtx.fillStyle = g;
-    photoCtx.fillRect(0,0,cw,ch);
-    return;
-  }
-
-  const iw = photoImg.width, ih = photoImg.height;
-  const cr = cw / ch;
-  const ir = iw / ih;
-
-  let sx, sy, sw, sh;
-  if (ir > cr) {
-    // image plus large: couper en largeur
-    sh = ih;
-    sw = ih * cr;
-    sx = (iw - sw) / 2;
-    sy = 0;
-  } else {
-    // image plus haute: couper en hauteur
-    sw = iw;
-    sh = iw / cr;
-    sx = 0;
-    sy = (ih - sh) / 2;
-  }
-  photoCtx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, cw, ch);
-}
-
-// Masque doré opaque
-function generateGoldMaskOpaque() {
-  maskCtx.save();
-  maskCtx.fillStyle = '#c9a227';
-  maskCtx.fillRect(0,0,GRID,GRID);
-  maskCtx.restore();
-
-  maskImageData = maskCtx.createImageData(GRID, GRID);
-  const d = maskImageData.data;
-
-  for (let i = 0; i < TOTAL_PIXELS; i++) {
-    const base = [
-      [201, 173,  67],
-      [212, 175,  55],
-      [184, 134,  11],
-      [230, 190,  95],
-      [255, 215,   0]
-    ][(Math.random() * 5) | 0];
-
-    const vr = (Math.random() * 22) - 11;
-    const vg = (Math.random() * 22) - 11;
-    const vb = (Math.random() * 22) - 11;
-
-    const r = Math.max(0, Math.min(255, base[0] + vr));
-    const g = Math.max(0, Math.min(255, base[1] + vg));
-    const b = Math.max(0, Math.min(255, base[2] + vb));
-
-    const j = i * 4;
-    d[j]   = r;
-    d[j+1] = g;
-    d[j+2] = b;
-    d[j+3] = 255; // opaque
-  }
-
-  maskCtx.putImageData(maskImageData, 0, 0);
-}
-
-// Révèle `count` pixels aléatoires (alpha → 0)
-function revealPixels(count) {
-  if (!maskImageData || coveredLen <= 0 || count <= 0) return;
-
-  const d = maskImageData.data;
-  const BATCH = 10000;
-  let remaining = Math.min(count, coveredLen);
-
-  while (remaining > 0) {
-    const step = Math.min(remaining, BATCH);
-    for (let i = 0; i < step; i++) {
-      const r = (Math.random() * coveredLen) | 0;
-      const idx = covered[r];
-      covered[r] = covered[coveredLen - 1];
-      coveredLen--;
-
-      const p = idx * 4;
-      d[p + 3] = 0; // transparent
-      revealedCount++;
-      if (coveredLen === 0) break;
-    }
-    maskCtx.putImageData(maskImageData, 0, 0);
-    remaining -= step;
-    if (coveredLen === 0) break;
-  }
-}
-
-function revealToTarget(target) {
-  const t = Math.max(0, Math.min(TOTAL_PIXELS, Math.floor(target)));
-  const need = t - revealedCount;
-  if (need > 0) revealPixels(need);
-}
-
-// --- Stripe ---
-let stripe, elements, paymentElement;
-
-async function fetchConfig() {
-  const r = await fetch('/api/config');
-  const data = await r.json();
-  if (!data.publishableKey) throw new Error('Stripe publishable key missing on server.');
-  return data;
-}
-async function createPaymentIntent(amount, pseudo) {
-  const r = await fetch('/api/create-payment-intent', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
-    body: JSON.stringify({ amount, pseudo })
-  });
-  const data = await r.json();
-  if (!r.ok || !data.clientSecret) throw new Error(data.error || 'PaymentIntent creation failed.');
-  return data.clientSecret;
-}
-async function mountPaymentElement() {
-  clearError();
-  const { publishableKey/*, mode*/ } = await fetchConfig();
-  stripe = Stripe(publishableKey);
-
-  const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
-  const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
-
-  const clientSecret = await createPaymentIntent(amount, pseudo);
-
-  if (paymentElement) paymentElement.destroy();
-  elements = stripe.elements({ clientSecret });
-  paymentElement = elements.create('payment');
-  paymentElement.mount('#payment-element');
-  donateBtn.disabled = false;
-}
-
-// --- UI net + thanks text ---
-function applyTotalsNet(totalNet, last) {
-  const t = Number(totalNet) || 0;
-  totalEl.textContent = t.toFixed(2).replace(/\.00$/, '');
-  progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
-  lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
-
-  revealToTarget(t);
-}
-
-// --- Socket updates (NET) ---
-socket.on('update', ({ totalNet, last }) => applyTotalsNet(totalNet, last));
-
-// --- Confetti (coins/bills) animation ---
 let particles = [];
 function createParticles(amount) {
   if (!assetsReady) return;
@@ -302,47 +104,244 @@ function animateConfetti() {
 }
 animateConfetti();
 
-// --- Flow Donate ---
+// -------------------- 1,000,000-pixel reveal --------------------
+const GRID = 1000;                 // 1000 x 1000 = 1,000,000 pixels
+const TOTAL_PIXELS = GRID * GRID;
+
+const photoCanvas = document.getElementById('photoCanvas');
+const maskCanvas  = document.getElementById('maskCanvas');
+const photoCtx = photoCanvas.getContext('2d');
+const maskCtx  = maskCanvas.getContext('2d', { willReadFrequently: true });
+
+let photoImg = null;
+let maskImageData = null;
+
+// Data structures to keep already revealed pixels persistent (per page session)
+let covered = null;    // Uint32Array of remaining pixel indices
+let coveredLen = 0;    // active length
+let revealedCount = 0; // how many pixels are already revealed
+
+async function initRevealStage() {
+  // Internal resolution for the photo (matches CSS aspect ratio 1080x1616)
+  photoCanvas.width = 1080;
+  photoCanvas.height = 1616;
+
+  // Mask exact grid 1000x1000 (upscaled via CSS)
+  maskCanvas.width = GRID;
+  maskCanvas.height = GRID;
+
+  try {
+    // Your portrait (put the file at /client/assets/me.jpg in the repo)
+    photoImg = await loadImage('/assets/me.jpg');
+  } catch (e) {
+    // Fallback background if photo is missing
+    const cw = photoCanvas.width, ch = photoCanvas.height;
+    const g = photoCtx.createLinearGradient(0,0, cw,ch);
+    g.addColorStop(0, '#111'); g.addColorStop(1, '#222');
+    photoCtx.fillStyle = g; photoCtx.fillRect(0,0,cw,ch);
+  }
+
+  drawPhotoCover();
+  generateGoldMaskOpaque();
+
+  // Prepare the “remaining pixels” index
+  covered = new Uint32Array(TOTAL_PIXELS);
+  for (let i = 0; i < TOTAL_PIXELS; i++) covered[i] = i;
+  coveredLen = TOTAL_PIXELS;
+  revealedCount = 0;
+}
+
+function drawPhotoCover() {
+  const cw = photoCanvas.width, ch = photoCanvas.height;
+  photoCtx.clearRect(0,0,cw,ch);
+
+  if (!photoImg) return; // fallback already painted in init
+
+  const iw = photoImg.width, ih = photoImg.height;
+  const cr = cw / ch, ir = iw / ih;
+  let sx, sy, sw, sh;
+  if (ir > cr) { sh = ih; sw = ih * cr; sx = (iw - sw) / 2; sy = 0; }
+  else { sw = iw; sh = iw / cr; sx = 0; sy = (ih - sh) / 2; }
+  photoCtx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, cw, ch);
+}
+
+function generateGoldMaskOpaque() {
+  // Start full opaque gold-ish
+  const d = maskCtx.createImageData(GRID, GRID);
+  const arr = d.data;
+  for (let i = 0; i < TOTAL_PIXELS; i++) {
+    // subtle golden noise
+    const palette = [
+      [201,173, 67],[212,175, 55],[184,134, 11],[230,190, 95],[255,215,  0]
+    ];
+    const base = palette[(Math.random() * palette.length) | 0];
+    const vr = (Math.random() * 22) - 11;
+    const vg = (Math.random() * 22) - 11;
+    const vb = (Math.random() * 22) - 11;
+    const r = Math.max(0, Math.min(255, base[0] + vr));
+    const g = Math.max(0, Math.min(255, base[1] + vg));
+    const b = Math.max(0, Math.min(255, base[2] + vb));
+    const j = i * 4;
+    arr[j]   = r; arr[j+1] = g; arr[j+2] = b; arr[j+3] = 255; // opaque
+  }
+  maskImageData = d;
+  maskCtx.putImageData(maskImageData, 0, 0);
+}
+
+// Reveal N random *unrevealed* pixels permanently (no re-randomization of past)
+function revealPixels(count) {
+  if (!maskImageData || coveredLen <= 0 || count <= 0) return;
+  const d = maskImageData.data;
+
+  // batch for perf
+  const BATCH = 10000;
+  let remaining = Math.min(count, coveredLen);
+
+  while (remaining > 0) {
+    const step = Math.min(remaining, BATCH);
+    for (let i = 0; i < step; i++) {
+      const r = (Math.random() * coveredLen) | 0;
+      const idx = covered[r];
+      // remove this idx from the set (swap with the end)
+      covered[r] = covered[coveredLen - 1];
+      coveredLen--;
+
+      const p = idx * 4;
+      d[p + 3] = 0; // alpha -> transparent (revealed)
+      revealedCount++;
+      if (coveredLen === 0) break;
+    }
+    maskCtx.putImageData(maskImageData, 0, 0);
+    remaining -= step;
+    if (coveredLen === 0) break;
+  }
+}
+
+// Move reveal to match target pixels (floor of totalNet)
+function revealToTarget(targetPixels) {
+  const t = Math.max(0, Math.min(TOTAL_PIXELS, Math.floor(targetPixels)));
+  const need = t - revealedCount;
+  if (need > 0) revealPixels(need);
+}
+
+// -------------------- Stripe (Payment Element) --------------------
+let stripe, elements, paymentElement;
+
+async function fetchConfig() {
+  const r = await fetch('/api/config');
+  const data = await r.json();
+  if (!data.publishableKey) throw new Error('Stripe publishable key missing.');
+  return data;
+}
+async function createPaymentIntent(amount, pseudo) {
+  const r = await fetch('/api/create-payment-intent', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ amount, pseudo })
+  });
+  const data = await r.json();
+  if (!r.ok || !data.clientSecret) throw new Error(data.error || 'PaymentIntent failed.');
+  return data.clientSecret;
+}
+async function mountPaymentElement() {
+  clearError();
+  const { publishableKey } = await fetchConfig();
+  stripe = Stripe(publishableKey);
+
+  const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
+  const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
+  const clientSecret = await createPaymentIntent(amount, pseudo);
+
+  if (paymentElement) paymentElement.destroy();
+  elements = stripe.elements({ clientSecret });
+  paymentElement = elements.create('payment');
+  paymentElement.mount('#payment-element');
+  donateBtn.disabled = false;
+}
+
 async function confirmAndRecord() {
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
-  // joue le son au succès du paiement
+  // play sound on success
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
   const pseudo = (pseudoEl.value || 'Anonymous').slice(0, 50);
 
   const r = await fetch('/api/donate', {
-    method: 'POST', headers: { 'Content-Type':'application/json' },
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ pseudo, amount })
   });
   const data = await r.json();
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
+  // update UI using server totals (NET)
   applyTotalsNet(data.totalNet, data.last);
+  // confetti
   createParticles(amount);
-
+  // remount a fresh Payment Element for next donation
   await mountPaymentElement();
 }
 
-// Init + events
+// -------------------- Totals / Progress / Reveal binding --------------------
+function applyTotalsNet(totalNet, last) {
+  const t = Number(totalNet) || 0;
+  // UI progress
+  totalEl.textContent = t.toFixed(2).replace(/\.00$/, '');
+  progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
+  lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
+
+  // 🔗 Reveal exactly floor(totalNet) pixels
+  revealToTarget(Math.floor(t));
+}
+
+// Socket: live update from server
+socket.on('update', ({ totalNet, last }) => applyTotalsNet(totalNet, last));
+
+// -------------------- Initial load --------------------
+async function loadInitialTotals() {
+  // Try a few known endpoints, fall back silently if missing
+  const endpoints = ['/api/summary', '/api/donations/summary', '/api/total'];
+  for (const url of endpoints) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const data = await r.json();
+      // normalize shape
+      if (typeof data.totalNet !== 'undefined') {
+        applyTotalsNet(data.totalNet, data.last || null);
+        return;
+      }
+      if (typeof data.total !== 'undefined') {
+        applyTotalsNet(data.total, data.last || null);
+        return;
+      }
+    } catch {}
+  }
+  // If no endpoint worked, leave at 0 (revealedCount stays 0)
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  try { await initRevealStage(); } 
+  try { await initRevealStage(); }
   catch (e) { showError('Reveal init error: ' + (e.message || e)); }
+
+  // Initialize totals (reveals correct number of pixels if e.g. 19/1,000,000)
+  await loadInitialTotals();
+
+  // Stripe
   mountPaymentElement().catch(err => showError('Stripe init error: ' + (err.message || err)));
 });
 
-// Recréer le PaymentIntent si le montant change
+// Recreate PaymentIntent when amount changes
 amountEl.addEventListener('change', () => {
   mountPaymentElement().catch(err => showError('Stripe reinit error: ' + (err.message || err)));
 });
 
-// Bouton Donate
+// Donate button
 donateBtn.addEventListener('click', async () => {
-  // 🔊 on tente de débloquer l’audio immédiatement lié au tap
   await unlockAudio();
-
   donateBtn.disabled = true; clearError();
   try { await confirmAndRecord(); }
   catch (e) { showError(e.message || String(e)); }

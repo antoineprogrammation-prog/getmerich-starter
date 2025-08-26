@@ -36,7 +36,10 @@
     </div>
 
     <input type="text" id="pseudo" placeholder="Your pseudo" />
-<input type="number" id="amount" name="amount" min="1" required />
+
+    <!-- ✅ Nouveau label au-dessus du montant -->
+    <label for="amount" class="field-label">Amount in $</label>
+    <input type="number" id="amount" name="amount" min="1" required />
 
     <div class="fineprint">
       Payment processing fees are included; the amount shown reflects what we actually receive.

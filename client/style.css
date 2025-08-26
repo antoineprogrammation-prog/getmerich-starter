@@ -143,20 +143,23 @@ button:disabled { opacity: .6; cursor: not-allowed; }
   .left-col .big-goal, .right-col .big-thank { font-size: 36px; }
   .formula-row { font-size: 16px; gap: 8px; }
 }
-/* --- Section multilingue --- */
+/* --- Section multi-message avec drapeaux --- */
 .multi-message {
-  margin-top: 50px;
-  text-align: center;
-  font-size: 18px;
+  margin-top: 20px;
+  font-size: 16px;
   line-height: 1.6;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
   color: #ddd;
 }
 .multi-message p {
-  margin: 20px 0;
+  margin: 16px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
 }
-.multi-message span.flag {
-  margin-right: 8px;
+.multi-message img.flag {
+  width: 28px;
+  height: auto;
+  flex-shrink: 0;
+  margin-top: 4px;
 }

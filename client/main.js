@@ -25,6 +25,26 @@ const pseudoEl = document.getElementById('pseudo');
 const amountEl = document.getElementById('amount');
 const coinSound = document.getElementById('coinSound');
 
+// ====== 🔊 Déblocage audio mobile ======
+let audioUnlocked = false;
+async function unlockAudio() {
+  if (audioUnlocked || !coinSound) return;
+  try {
+    // petite lecture silencieuse → pause immédiate → remet au début
+    coinSound.muted = true;
+    await coinSound.play();
+    await new Promise(r => setTimeout(r, 10));
+    coinSound.pause();
+    coinSound.currentTime = 0;
+    coinSound.muted = false;
+    audioUnlocked = true;
+  } catch { /* ignoré */ }
+}
+// 1er geste utilisateur : on déverrouille l’audio (mobile-friendly)
+window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+window.addEventListener('pointerdown', unlockAudio, { once: true });
+window.addEventListener('keydown', unlockAudio, { once: true });
+
 // --- Canvas & animation confetti coins/bills ---
 const animCanvas = document.getElementById('animationCanvas');
 const animCtx = animCanvas.getContext('2d');
@@ -61,8 +81,7 @@ let coveredLen = 0;    // longueur active
 let revealedCount = 0; // combien déjà révélés
 
 async function initRevealStage() {
-  // Stage en 1080 x 1616 (format photo) en CSS via aspect-ratio
-  // Ici on règle la résolution interne de la photo au pixel près pour un rendu net
+  // Résolution interne de la photo (alignée au ratio 1080x1616 défini en CSS)
   photoCanvas.width = 1080;
   photoCanvas.height = 1616;
 
@@ -228,9 +247,6 @@ async function mountPaymentElement() {
   paymentElement = elements.create('payment');
   paymentElement.mount('#payment-element');
   donateBtn.disabled = false;
-
-  // ✅ On n'affiche plus l'alerte "live mode"
-  // (rien ici)
 }
 
 // --- UI net + thanks text ---
@@ -291,6 +307,7 @@ async function confirmAndRecord() {
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
+  // joue le son au succès du paiement
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
@@ -315,10 +332,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   catch (e) { showError('Reveal init error: ' + (e.message || e)); }
   mountPaymentElement().catch(err => showError('Stripe init error: ' + (err.message || err)));
 });
+
+// Recréer le PaymentIntent si le montant change
 amountEl.addEventListener('change', () => {
   mountPaymentElement().catch(err => showError('Stripe reinit error: ' + (err.message || err)));
 });
+
+// Bouton Donate
 donateBtn.addEventListener('click', async () => {
+  // 🔊 on tente de débloquer l’audio immédiatement lié au tap
+  await unlockAudio();
+
   donateBtn.disabled = true; clearError();
   try { await confirmAndRecord(); }
   catch (e) { showError(e.message || String(e)); }

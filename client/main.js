@@ -224,8 +224,7 @@ function applyTotalsNet(totalNet, last){
 }
 
 /*************************
- * Chargement initial
- * – Force un minimum à 7 219,53 si l'API ne répond pas (ou renvoie moins)
+ * Chargement initial (min 7 219,53)
  *************************/
 const MIN_START_TOTAL = 7219.53;
 
@@ -245,7 +244,7 @@ async function loadInitialTotals(){
   applyTotalsNet(start, last);
 }
 
-// Live updates depuis le serveur (chaque don à venir)
+// Live updates
 socket.on('update', ({ totalNet, last }) => applyTotalsNet(totalNet, last));
 
 /*************************
@@ -306,11 +305,8 @@ async function confirmAndRecord(){
   const data = await r.json();
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
-  // met à jour la jauge + révèle des NOUVEAUX pixels si nécessaire
   applyTotalsNet(data.totalNet, data.last);
-
-  // remonter un Payment Element propre pour le don suivant
-  await mountPaymentElement();
+  await mountPaymentElement(); // prêt pour le don suivant
 }
 
 /*************************

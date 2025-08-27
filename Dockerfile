@@ -4,12 +4,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # ---------- Install deps ----------
-# Copie les manifests pour profiter du cache
+# Copie les manifests (cache friendly)
 COPY package.json package-lock.json* ./
 COPY server/package.json server/package.json
 COPY client/package.json client/package.json
-
-# Installe les deps du projet (racine)
 RUN npm install --omit=dev
 
 # ---------- Build client ----------

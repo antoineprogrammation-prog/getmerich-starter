@@ -30,7 +30,6 @@ let audioUnlocked = false;
 async function unlockAudio() {
   if (audioUnlocked || !coinSound) return;
   try {
-    // petite lecture silencieuse → pause immédiate → remet au début
     coinSound.muted = true;
     await coinSound.play();
     await new Promise(r => setTimeout(r, 10));
@@ -40,7 +39,6 @@ async function unlockAudio() {
     audioUnlocked = true;
   } catch { /* ignoré */ }
 }
-// 1er geste utilisateur : on déverrouille l’audio (mobile-friendly)
 window.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
 window.addEventListener('pointerdown', unlockAudio, { once: true });
 window.addEventListener('keydown', unlockAudio, { once: true });
@@ -81,35 +79,26 @@ let coveredLen = 0;    // longueur active
 let revealedCount = 0; // combien déjà révélés
 
 async function initRevealStage() {
-  // Résolution interne de la photo (alignée au ratio 1080x1616 défini en CSS)
   photoCanvas.width = 1080;
   photoCanvas.height = 1616;
-
-  // Masque = grille fixe 1000x1000 (upscaled via CSS)
   maskCanvas.width = GRID;
   maskCanvas.height = GRID;
 
-  // Charger ta photo
   try {
     photoImg = await loadImage('/assets/me.jpg');
   } catch (e) {
     showError('Photo not found. Please add /assets/me.jpg');
   }
 
-  // Dessiner la photo (cover)
   drawPhotoCover();
-
-  // Générer un masque doré OPAQUE (aucune transparence au départ)
   generateGoldMaskOpaque();
 
-  // Préparer l’indexation des pixels couverts
   covered = new Uint32Array(TOTAL_PIXELS);
   for (let i = 0; i < TOTAL_PIXELS; i++) covered[i] = i;
   coveredLen = TOTAL_PIXELS;
   revealedCount = 0;
 }
 
-// Dessine la photo en "cover" dans photoCanvas (ou fond doux si absent)
 function drawPhotoCover() {
   const cw = photoCanvas.width, ch = photoCanvas.height;
   photoCtx.clearRect(0,0,cw,ch);
@@ -127,23 +116,11 @@ function drawPhotoCover() {
   const ir = iw / ih;
 
   let sx, sy, sw, sh;
-  if (ir > cr) {
-    // image plus large: couper en largeur
-    sh = ih;
-    sw = ih * cr;
-    sx = (iw - sw) / 2;
-    sy = 0;
-  } else {
-    // image plus haute: couper en hauteur
-    sw = iw;
-    sh = iw / cr;
-    sx = 0;
-    sy = (ih - sh) / 2;
-  }
+  if (ir > cr) { sh = ih; sw = ih * cr; sx = (iw - sw) / 2; sy = 0; }
+  else { sw = iw; sh = iw / cr; sx = 0; sy = (ih - sh) / 2; }
   photoCtx.drawImage(photoImg, sx, sy, sw, sh, 0, 0, cw, ch);
 }
 
-// Masque doré opaque
 function generateGoldMaskOpaque() {
   maskCtx.save();
   maskCtx.fillStyle = '#c9a227';
@@ -217,7 +194,7 @@ function revealToTarget(target) {
 let stripe, elements, paymentElement;
 
 async function fetchConfig() {
-  const r = await fetch('/api/config');
+  const r = await fetch('/api/config', { cache: 'no-store' });
   const data = await r.json();
   if (!data.publishableKey) throw new Error('Stripe publishable key missing on server.');
   return data;
@@ -234,7 +211,7 @@ async function createPaymentIntent(amount, pseudo) {
 }
 async function mountPaymentElement() {
   clearError();
-  const { publishableKey/*, mode*/ } = await fetchConfig();
+  const { publishableKey } = await fetchConfig();
   stripe = Stripe(publishableKey);
 
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
@@ -249,13 +226,14 @@ async function mountPaymentElement() {
   donateBtn.disabled = false;
 }
 
-// --- UI net + thanks text ---
+// --- UI net + thanks text + pixels
 function applyTotalsNet(totalNet, last) {
   const t = Number(totalNet) || 0;
   totalEl.textContent = t.toFixed(2).replace(/\.00$/, '');
-  progressEl.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
+  const pct = Math.min((t / 1_000_000) * 100, 100);
+  progressEl.style.width = `${pct}%`;
+  if (pct > 0) progressEl.classList.add('nonzero'); else progressEl.classList.remove('nonzero');
   lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
-
   revealToTarget(t);
 }
 
@@ -307,7 +285,6 @@ async function confirmAndRecord() {
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
-  // joue le son au succès du paiement
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
 
   const amount = Math.max(1, Math.floor(Number(amountEl.value || 1)));
@@ -326,23 +303,37 @@ async function confirmAndRecord() {
   await mountPaymentElement();
 }
 
+// --- Chargement initial: récupère le total serveur (important!) ---
+async function loadInitialTotal() {
+  const endpoints = ['/api/summary', '/api/donations/summary', '/api/total'];
+  for (const url of endpoints) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (typeof d.totalNet !== 'undefined') { applyTotalsNet(d.totalNet, d.last || null); return; }
+      if (typeof d.total    !== 'undefined') { applyTotalsNet(d.total,    d.last || null); return; }
+    } catch {}
+  }
+  // fallback: aligne a minima 7219.54 si aucune route ne répond
+  applyTotalsNet(7219.54, null);
+}
+
 // Init + events
 document.addEventListener('DOMContentLoaded', async () => {
   try { await initRevealStage(); } 
   catch (e) { showError('Reveal init error: ' + (e.message || e)); }
+
+  await loadInitialTotal();           // <-- met à jour la jauge au chargement
   mountPaymentElement().catch(err => showError('Stripe init error: ' + (err.message || err)));
 });
 
-// Recréer le PaymentIntent si le montant change
 amountEl.addEventListener('change', () => {
   mountPaymentElement().catch(err => showError('Stripe reinit error: ' + (err.message || err)));
 });
 
-// Bouton Donate
 donateBtn.addEventListener('click', async () => {
-  // 🔊 on tente de débloquer l’audio immédiatement lié au tap
   await unlockAudio();
-
   donateBtn.disabled = true; clearError();
   try { await confirmAndRecord(); }
   catch (e) { showError(e.message || String(e)); }

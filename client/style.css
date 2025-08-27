@@ -93,6 +93,19 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 }
 
 /* --- Footer --- */
-.site-footer { margin-top: 60px; padding: 20px; text-align: center; font-size: 14px; color: #aaa; background: #111; border-top: 1px solid #222; }
-.site-footer a { color: gold; text-decoration: none; }
-.site-footer a:hover { tex
+.site-footer {
+  margin-top: 60px;
+  padding: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #aaa;
+  background: #111;
+  border-top: 1px solid #222;
+}
+.site-footer a {
+  color: gold;
+  text-decoration: none;
+}
+.site-footer a:hover {
+  text-decoration: underline;
+}

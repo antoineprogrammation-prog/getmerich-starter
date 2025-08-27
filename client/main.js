@@ -148,14 +148,8 @@ function idxToXY(idx){
 }
 
 // applique transparence pour une position
-function clearAlphaAtIndex(i){
-  maskImageData.data[i*4 + 3] = 0;
-}
-
-function clearAlphaAtXY(x, y){
-  const i = (y * LCG.GRID + x);
-  clearAlphaAtIndex(i);
-}
+function clearAlphaAtIndex(i){ maskImageData.data[i*4 + 3] = 0; }
+function clearAlphaAtXY(x, y){ clearAlphaAtIndex(y * LCG.GRID + x); }
 
 // révèle jusqu’à target (1 $ = 1 pixel) — ordre déterministe
 function revealUpTo(target){
@@ -186,20 +180,14 @@ async function initRevealStage(){
   }
   drawPhotoCover();
 
-  // --- Mosaïque de tons dorés (pas un dégradé uniforme) ---
+  // --- Mosaïque de tons dorés ---
   const d = maskCtx.createImageData(LCG.GRID, LCG.GRID);
   const a = d.data;
-  // palette or (variantes)
   const PAL = [
-    [201,173,67],  // #c9ad43
-    [212,175,55],  // #d4af37
-    [184,134,11],  // #b8860b
-    [230,190,95],  // #e6be5f
-    [255,215,0]    // #ffd700
+    [201,173,67],[212,175,55],[184,134,11],[230,190,95],[255,215,0]
   ];
   for (let i=0;i<LCG.M;i++){
     const base = PAL[(Math.random()*PAL.length)|0];
-    // micro-variations pour l'effet mosaïque
     const r = Math.max(0, Math.min(255, base[0] + (Math.random()*26-13)));
     const g = Math.max(0, Math.min(255, base[1] + (Math.random()*26-13)));
     const b = Math.max(0, Math.min(255, base[2] + (Math.random()*26-13)));
@@ -213,7 +201,6 @@ function drawPhotoCover(){
   const cw = photoCanvas.width, ch = photoCanvas.height;
   photoCtx.clearRect(0,0,cw,ch);
   if (!photoImg) return;
-  // object-fit: cover
   const iw = photoImg.width, ih = photoImg.height;
   const cr = cw / ch, ir = iw / ih;
   let sx,sy,sw,sh;
@@ -235,8 +222,7 @@ function applyTotalsNet(totalNet, last){
   }
   if (progressLabel) progressLabel.textContent = `${pct.toFixed(2)}%`;
   if (lastEl)   lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
-  // révélation déterministe jusqu’au floor(totalNet)
-  revealUpTo(Math.floor(t));
+  revealUpTo(Math.floor(t)); // 1$ = 1 pixel
 }
 
 /*************************
@@ -268,10 +254,7 @@ let stripe, elements, paymentElement;
 
 function waitForStripeJs(){
   return new Promise((resolve, reject) => {
-    const check = () => {
-      if (window.Stripe) return resolve();
-      setTimeout(check, 50);
-    };
+    const check = () => { if (window.Stripe) return resolve(); setTimeout(check, 50); };
     check();
     setTimeout(() => reject(new Error('Stripe.js not loaded')), 10000);
   });
@@ -322,7 +305,6 @@ async function confirmAndRecord(){
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
   if (error) throw new Error(error.message || 'Payment failed');
 
-  // son + particules
   try { coinSound.currentTime = 0; await coinSound.play(); } catch {}
   addParticles(Math.max(1, Math.floor(Number(amountEl?.value || 1))));
 
@@ -349,9 +331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadInitialTotals();
   mountPaymentElement().catch(() => {});
 });
-
 amountEl?.addEventListener('change', () => { mountPaymentElement().catch(() => {}); });
-
 donateBtn?.addEventListener('click', async () => {
   await unlockAudio();
   donateBtn.disabled = true; hideError();

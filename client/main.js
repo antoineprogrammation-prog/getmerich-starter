@@ -6,6 +6,7 @@ const totalEl  = document.getElementById('total');
 const lastEl   = document.getElementById('last');
 const progress = document.getElementById('progress');
 const progressLabel = document.getElementById('progress-label');
+const stripeDiag = document.getElementById('stripe-diag');
 
 const donateBtn = document.getElementById('donateBtn');
 const pseudoEl  = document.getElementById('pseudo');
@@ -26,6 +27,11 @@ function hideError() {
   notice.textContent = '';
   notice.classList.remove('error');
   notice.classList.add('hidden');
+}
+function showDiag(msg){
+  if (!stripeDiag) return;
+  stripeDiag.textContent = msg;
+  stripeDiag.classList.remove('hidden');
 }
 
 /*************************
@@ -107,7 +113,7 @@ function addParticles(amount){
 })();
 
 /*************************
- * Reveal 1,000,000 pixels (déterministe LCG)
+ * Reveal 1,000,000 pixels (LCG déterministe)
  *************************/
 const photoCanvas = document.getElementById('photoCanvas');
 const maskCanvas  = document.getElementById('maskCanvas');
@@ -117,12 +123,11 @@ const maskCtx  = maskCanvas.getContext('2d', { willReadFrequently: true });
 let photoImg = null;
 let maskImageData = null;
 
-// LCG partagé avec le serveur
+// LCG partagé
 let LCG = { M: 1_000_000, A: 21, C: 7, SEED: 1234567, GRID: 1000 };
-let lcgX = 0;          // état courant
-let revealedCount = 0; // combien ont été révélés (toujours en tête de la permutation)
+let lcgX = 0;
+let revealedCount = 0;
 
-// charge config depuis le serveur (pour rester synchro avec server/pixels.js)
 async function loadPixelsConfig(){
   try {
     const r = await fetch('/api/pixels/config', { cache: 'no-store' });
@@ -133,30 +138,16 @@ async function loadPixelsConfig(){
   } catch {}
   lcgX = LCG.SEED % LCG.M;
 }
-
-// next valeur dans [0..M-1]
-function lcgNext(){
-  lcgX = ( (LCG.A * lcgX + LCG.C) % LCG.M );
-  return lcgX;
-}
-
-// convertit index → (x,y)
-function idxToXY(idx){
-  const x = idx % LCG.GRID;
-  const y = (idx / LCG.GRID) | 0;
-  return [x, y];
-}
-
-// applique transparence pour une position
+function lcgNext(){ lcgX = ((LCG.A * lcgX + LCG.C) % LCG.M); return lcgX; }
+function idxToXY(idx){ return [idx % LCG.GRID, (idx / LCG.GRID) | 0]; }
 function clearAlphaAtIndex(i){ maskImageData.data[i*4 + 3] = 0; }
 function clearAlphaAtXY(x, y){ clearAlphaAtIndex(y * LCG.GRID + x); }
 
-// révèle jusqu’à target (1 $ = 1 pixel) — ordre déterministe
 function revealUpTo(target){
   target = Math.max(0, Math.min(LCG.M, target|0));
   if (!maskImageData) return;
   while (revealedCount < target){
-    const idx = lcgNext();           // pixel déterministe suivant
+    const idx = lcgNext();
     const [x, y] = idxToXY(idx);
     clearAlphaAtXY(x, y);
     revealedCount++;
@@ -167,11 +158,9 @@ function revealUpTo(target){
 async function initRevealStage(){
   await loadPixelsConfig();
 
-  // taille logique
   photoCanvas.width = 1080; photoCanvas.height = 1616;
   maskCanvas.width  = LCG.GRID;  maskCanvas.height  = LCG.GRID;
 
-  // image
   try { photoImg = await loadImage('/assets/me.jpg'); }
   catch {
     const g = photoCtx.createLinearGradient(0,0,photoCanvas.width,photoCanvas.height);
@@ -180,7 +169,7 @@ async function initRevealStage(){
   }
   drawPhotoCover();
 
-  // --- Mosaïque de tons dorés ---
+  // Mosaïque dorée
   const d = maskCtx.createImageData(LCG.GRID, LCG.GRID);
   const a = d.data;
   const PAL = [
@@ -216,13 +205,10 @@ function applyTotalsNet(totalNet, last){
   const t = Number(totalNet) || 0;
   if (totalEl)  totalEl.textContent = fmtMoney(t);
   const pct = Math.max(0, Math.min(100, (t / 1_000_000) * 100));
-  if (progress) {
-    progress.style.width = `${pct}%`;
-    if (pct > 0) progress.classList.add('nonzero'); else progress.classList.remove('nonzero');
-  }
+  if (progress) { progress.style.width = `${pct}%`; if (pct > 0) progress.classList.add('nonzero'); else progress.classList.remove('nonzero'); }
   if (progressLabel) progressLabel.textContent = `${pct.toFixed(2)}%`;
   if (lastEl)   lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
-  revealUpTo(Math.floor(t)); // 1$ = 1 pixel
+  revealUpTo(Math.floor(t));
 }
 
 /*************************
@@ -259,7 +245,6 @@ function waitForStripeJs(){
     setTimeout(() => reject(new Error('Stripe.js not loaded')), 10000);
   });
 }
-
 async function fetchConfig(){
   const r = await fetch('/api/config', { cache: 'no-store' });
   const d = await r.json();
@@ -293,12 +278,21 @@ async function mountPaymentElement(){
     paymentElement.mount('#payment-element');
 
     if (donateBtn) donateBtn.disabled = false;
-    const pe = document.getElementById('payment-error');
-    if (pe) pe.classList.add('hidden');
+    if (stripeDiag) stripeDiag.classList.add('hidden');
   } catch (e) {
     showError('Stripe init error: ' + (e.message || e));
-    const pe = document.getElementById('payment-error');
-    if (pe) { pe.textContent = 'Stripe init error: ' + (e.message || e); pe.classList.remove('hidden'); }
+    // Diag détaillé côté client
+    try {
+      const r = await fetch('/api/diag/stripe', { cache: 'no-store' });
+      if (r.ok) {
+        const d = await r.json();
+        const msg =
+          `Stripe diag — publishableKey: ${d.havePublishableKey ? 'OK' : 'MISSING'} `
+          + `(prefix: ${d.publishableKeyPrefix ?? 'n/a'}), secretKey: ${d.haveSecretKey ? 'OK' : 'MISSING'} `
+          + `(mode: ${d.modeHint}).`;
+        showDiag(msg);
+      }
+    } catch {}
   }
 }
 async function confirmAndRecord(){
@@ -320,7 +314,7 @@ async function confirmAndRecord(){
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
   applyTotalsNet(data.totalNet, data.last);
-  await mountPaymentElement(); // prêt pour le don suivant
+  await mountPaymentElement();
 }
 
 /*************************

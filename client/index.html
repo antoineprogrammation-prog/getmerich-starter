@@ -50,15 +50,19 @@
         Payment processing fees are included; the amount shown reflects what we actually receive.
       </div>
 
-      <!-- ⬇️ Stripe Payment Element s’intègre juste en dessous -->
+      <!-- ⬇️ Stripe Payment Element exactement ici -->
       <div id="payment-element"></div>
       <div id="payment-error" class="notice error hidden"></div>
       <button id="donateBtn" disabled>Donate</button>
+
+      <!-- Petit bloc diag Stripe visible seulement si problème -->
+      <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
   </div>
 
   <footer class="site-footer">
-    commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
+    commercial collab :
+    <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
   </footer>
 
   <!-- Animations + son -->

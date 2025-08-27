@@ -13,10 +13,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Healthcheck
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
-// Servir le build client
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist, { index: false }));
 app.get('*', (req, res) => {

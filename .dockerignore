@@ -2,6 +2,5 @@
 node_modules
 client/node_modules
 server/node_modules
-client/dist
 npm-debug.log
 .DS_Store

@@ -23,16 +23,12 @@ const hasBuild = fs.existsSync(indexHtml);
 console.log('[diag] clientDist =', clientDist);
 console.log('[diag] index.html present =', hasBuild);
 
-// Route racine: si pas de build, message clair
 app.get('/', (_req, res, next) => {
   if (hasBuild) return next();
-  res
-    .status(200)
-    .type('text/plain')
+  res.status(200).type('text/plain')
     .send('Server OK (root). Mais client/dist manquant (index.html absent).');
 });
 
-// Static si build présent
 if (hasBuild) {
   app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
   app.get('*', (_req, res) => res.sendFile(indexHtml));
@@ -40,7 +36,7 @@ if (hasBuild) {
   app.use((_req, res) => res.status(404).type('text/plain').send('404 – Pas de build front'));
 }
 
-const PORT = Number(process.env.PORT) || 8080; // 8080 attendu par Railway (déjà configuré)
+const PORT = Number(process.env.PORT) || 8080; // ton service est déjà réglé sur 8080
 const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);

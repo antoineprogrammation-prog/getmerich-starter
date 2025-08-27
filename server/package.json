@@ -9,8 +9,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "postinstall": "cd ../client && npm ci --include=dev && npm run build"
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "compression": "^1.7.4",

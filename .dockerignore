@@ -4,4 +4,3 @@ client/node_modules
 server/node_modules
 npm-debug.log
 .DS_Store
-# Ne PAS ignorer client/**, on veut index.html dans l'image

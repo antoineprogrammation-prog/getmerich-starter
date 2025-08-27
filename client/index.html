@@ -1,35 +1,63 @@
 <!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Get Me Rich</title>
-    <link rel="stylesheet" href="/style.css" />
-  </head>
-  <body>
-    <main class="container">
-      <h1>Get Me Rich</h1>
-      <p class="subtitle">Site OK (build Vite)</p>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Get Me Rich</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css" />
+  <!-- libs -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+  <script src="https://js.stripe.com/v3/" defer></script>
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <h1 class="main-title">
+      Get me rich <span class="please">(please)</span>
+    </h1>
 
-      <section class="gauge">
-        <div class="gauge-header">
-          <span>Objectif :</span>
-          <strong>$1,000,000.00</strong>
-        </div>
-        <div class="gauge-bar">
-          <div id="gaugeFill" class="gauge-fill" style="width:0%"></div>
-        </div>
-        <div class="gauge-footer">
-          <span>Collecté :</span>
-          <strong id="raisedLabel">$7,219.53</strong>
-        </div>
-      </section>
+    <div id="notice" class="notice hidden"></div>
 
-      <section class="notice">
-        <p id="noticeText">Chargement…</p>
-      </section>
-    </main>
+    <!-- Jauge / total -->
+    <div id="totalContainer">
+      <span id="total">7 219,53</span> / 1 000 000$
+    </div>
+    <div id="progress-bar"><div id="progress"></div></div>
+    <div id="last">Thanks to the last donor : -</div>
 
-    <script type="module" src="/main.js"></script>
-  </body>
+    <!-- Reveal -->
+    <div class="reveal">
+      <div class="reveal-title">Make a donation to reveal who I am</div>
+      <div class="reveal-legend">1$ = 1 pixel revealed</div>
+
+      <div class="reveal-stage">
+        <!-- Le canvas photo (1080x1616) -->
+        <canvas id="photoCanvas"></canvas>
+        <!-- Le masque (1 000 000 de pixels → 1000x1000) -->
+        <canvas id="maskCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form">
+      <input type="text" id="pseudo" placeholder="Your pseudo" />
+      <input type="number" id="amount" name="amount" placeholder="Amount in $" min="1" required />
+      <div class="fineprint">
+        Payment processing fees are included; the amount shown reflects what we actually receive.
+      </div>
+
+      <div id="payment-element"></div>
+      <button id="donateBtn" disabled>Donate</button>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
+  </footer>
+
+  <!-- Animations + son -->
+  <canvas id="animationCanvas"></canvas>
+  <audio id="coinSound" src="/assets/sound.mp3"></audio>
+</body>
 </html>

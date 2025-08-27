@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <title>Get Me Rich</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
   <script src="https://js.stripe.com/v3/" defer></script>
   <script src="/main.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
@@ -19,10 +19,11 @@
     <div id="notice" class="notice hidden"></div>
 
     <div id="totalContainer">
-      <span id="total">7 219,53</span> / 1 000 000$ (net)
+      <span id="total">0</span> / 1 000 000$ (net)
     </div>
-    <div id="progress-bar"><div id="progress"></div></div>
+
     <div id="last">Thanks to the last donor : -</div>
+    <div id="progress-bar"><div id="progress"></div></div>
 
     <!-- Reveal -->
     <div class="reveal">
@@ -34,9 +35,9 @@
       </div>
     </div>
 
-    <!-- Form -->
+    <!-- ✅ Champs avec placeholders -->
     <input type="text" id="pseudo" placeholder="Your pseudo" />
-    <input type="number" id="amount" placeholder="Amount in $" min="1" required />
+    <input type="number" id="amount" name="amount" placeholder="Amount in $" min="1" required />
 
     <div class="fineprint">
       Payment processing fees are included; the amount shown reflects what we actually receive.
@@ -44,8 +45,42 @@
 
     <div id="payment-element"></div>
     <button id="donateBtn" disabled>Donate</button>
+
+    <!-- ✅ Bloc 2 colonnes -->
+    <div class="two-columns">
+      <!-- Gauche -->
+      <div class="col left-col">
+        <div class="big-goal">1 000 000$</div>
+
+        <div class="formula-row"><span>👥</span><span>1 000 000</span><span>×</span><span>💵</span><span>1$</span></div>
+        <div class="formula-row"><span>👥</span><span>500 000</span><span>×</span><span>💵</span><span>2$</span></div>
+        <div class="formula-row"><span>👥</span><span>200 000</span><span>×</span><span>💵</span><span>5$</span></div>
+        <div class="formula-row"><span>👥</span><span>100 000</span><span>×</span><span>💵</span><span>10$</span></div>
+        <div class="formula-row"><span>👥</span><span>50 000</span><span>×</span><span>💵</span><span>20$</span></div>
+        <div class="formula-row"><span>👥</span><span>20 000</span><span>×</span><span>💵</span><span>50$</span></div>
+        <div class="formula-row"><span>👥</span><span>10 000</span><span>×</span><span>💵</span><span>100$</span></div>
+      </div>
+
+      <!-- Droite -->
+      <div class="col right-col">
+        <div class="multi-message">
+          <p><img class="flag" src="/assets/uk.png" alt="UK flag"> We are 8 billion. If just 0.01% gave $1, my goal would be reached.<br>
+          Help me become the first millionaire… funded one dollar at a time.</p>
+
+          <p><img class="flag" src="/assets/fr.png" alt="FR flag"> Nous sommes 8 milliards. Si seulement 0,01% donnait 1$, mon objectif serait atteint.<br>
+          Aidez-moi à devenir le premier millionnaire… financé un dollar à la fois.</p>
+
+          <p><img class="flag" src="/assets/es.png" alt="ES flag"> Somos 8 mil millones. Si solo el 0,01% diera 1$, alcanzaría mi meta.<br>
+          Ayúdame a convertirme en el primer millonario… financiado un dólar a la vez.</p>
+
+          <p><img class="flag" src="/assets/cn.png" alt="CN flag"> 我们是80亿人。 如果只有0.01%的人捐赠1美元，我的目标就能实现。<br>
+          帮助我成为第一个百万富翁… 一次一美元。</p>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- ✅ Footer -->
   <footer class="site-footer">
     commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
   </footer>

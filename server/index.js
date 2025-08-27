@@ -7,8 +7,6 @@ const cors = require('cors');
 
 try { require('dotenv').config(); } catch (_) {}
 
-const donationsRouter = require('./routes/donations');
-
 const app = express();
 app.disable('x-powered-by');
 app.use(compression());
@@ -17,17 +15,24 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.set('trust proxy', 1);
 
-// Healthcheck
+// --- Healthcheck ---
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
-// API
-app.use('/api/donations', donationsRouter);
+// --- API minimale (pré-pixels) ---
+app.get('/api/stats', (_req, res) => {
+  res.json({
+    goal: 1000000,
+    totalRaised: 7219.53,
+    pixelsEnabled: false,
+    message: 'Pixels désactivés temporairement (rollback stable).'
+  });
+});
 
-// Static (build Vite)
+// --- Static (build Vite) ---
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist, { maxAge: '1h', index: false }));
 
-// SPA fallback (sauf API)
+// --- SPA fallback (sauf /api/*) ---
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
   res.sendFile(path.join(clientDist, 'index.html'), (err) => err && next(err));
@@ -35,7 +40,6 @@ app.get('*', (req, res, next) => {
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
-
 app.listen(PORT, HOST, () => {
   console.log(`[server] listening on http://${HOST}:${PORT}`);
 });

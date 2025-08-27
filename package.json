@@ -1,7 +1,7 @@
-{{
+{
   "name": "getmerich-starter",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.9.0",
   "license": "MIT",
   "scripts": {
     "postinstall": "npm --prefix server install && npm --prefix client install --include=dev && npm --prefix client run build",

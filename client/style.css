@@ -14,8 +14,38 @@ body { margin: 0; background: #000; color: #fff; font-family: system-ui, Arial, 
 .fineprint { color: #bbb; font-size: 12px; margin: 6px 0 14px; }
 
 #totalContainer { font-size: 24px; margin: 10px 0; }
-#progress-bar { width: 100%; height: 30px; background: #333; margin: 20px auto; border-radius: 15px; overflow: hidden; }
-#progress { width: 0; height: 100%; background: gold; transition: width .4s ease; }
+
+/* Jauge visible même à <1% */
+#progress-bar {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  background: #222;
+  margin: 20px auto;
+  border-radius: 15px;
+  overflow: hidden;
+  outline: 1px solid #444;
+}
+#progress {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #f6e27a, #ffd700);
+  box-shadow: 0 0 10px rgba(255,215,0,0.6);
+  transition: width .45s ease;
+}
+/* minimum visuel: si > 0%, le JS ajoutera la classe 'nonzero' */
+#progress.nonzero { min-width: 6px; }
+#progress-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ddd;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#last { margin-top: 6px; color: #bbb; }
 
 input[type=text], input[type=number], #payment-element {
   width: 100%; min-height: 44px; margin: 10px 0; padding: 10px 12px;
@@ -45,7 +75,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 }
 
 #photoCanvas, #maskCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-#maskCanvas { image-rendering: pixelated; background: linear-gradient(135deg,#c9ad43,#d4af37,#b8860b,#e6be5f,#ffd700); mix-blend-mode: normal; }
+/* On garde la base unie, la mosaïque est peinte pixel par pixel côté JS */
+#maskCanvas { image-rendering: pixelated; background: #111; mix-blend-mode: normal; }
 
 /* --- Responsive --- */
 @media (max-width: 1024px) {
@@ -64,4 +95,4 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 /* --- Footer --- */
 .site-footer { margin-top: 60px; padding: 20px; text-align: center; font-size: 14px; color: #aaa; background: #111; border-top: 1px solid #222; }
 .site-footer a { color: gold; text-decoration: none; }
-.site-footer a:hover { text-decoration: underline; }
+.site-footer a:hover { tex

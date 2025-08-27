@@ -5,6 +5,7 @@ const notice   = document.getElementById('notice');
 const totalEl  = document.getElementById('total');
 const lastEl   = document.getElementById('last');
 const progress = document.getElementById('progress');
+const progressLabel = document.getElementById('progress-label');
 
 const donateBtn = document.getElementById('donateBtn');
 const pseudoEl  = document.getElementById('pseudo');
@@ -14,8 +15,18 @@ const coinSound = document.getElementById('coinSound');
 const fmtMoney = (v) =>
   new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
-function showError(msg) { if (!notice) return; notice.textContent = msg; notice.classList.remove('hidden'); }
-function hideError()    { if (!notice) return; notice.textContent = '';  notice.classList.add('hidden'); }
+function showError(msg) {
+  if (!notice) return;
+  notice.textContent = msg;
+  notice.classList.add('error');
+  notice.classList.remove('hidden');
+}
+function hideError() {
+  if (!notice) return;
+  notice.textContent = '';
+  notice.classList.remove('error');
+  notice.classList.add('hidden');
+}
 
 /*************************
  * Socket.io (live updates)
@@ -29,8 +40,13 @@ let audioUnlocked = false;
 async function unlockAudio() {
   if (audioUnlocked || !coinSound) return;
   try {
-    coinSound.muted = true; await coinSound.play(); await new Promise(r => setTimeout(r, 10));
-    coinSound.pause(); coinSound.currentTime = 0; coinSound.muted = false; audioUnlocked = true;
+    coinSound.muted = true;
+    await coinSound.play();
+    await new Promise(r => setTimeout(r, 10));
+    coinSound.pause();
+    coinSound.currentTime = 0;
+    coinSound.muted = false;
+    audioUnlocked = true;
   } catch {}
 }
 addEventListener('pointerdown', unlockAudio, { once: true });
@@ -45,7 +61,12 @@ function resizeAnim(){ animCanvas.width = innerWidth; animCanvas.height = innerH
 addEventListener('resize', resizeAnim); resizeAnim();
 
 function loadImage(src){
-  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img '+src)); i.src = src; });
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = () => rej(new Error('img '+src));
+    i.src = src;
+  });
 }
 let coinsImg, billsImg, assetsReady = false;
 Promise.all([
@@ -59,10 +80,14 @@ function addParticles(amount){
   const coins = Math.min(Math.max(3, Math.floor(amount / 5)), 10);
   const bills = amount >= 20 ? Math.min(Math.floor(amount / 20), 5) : 0;
   for (let i=0;i<coins;i++){
-    particles.push({ img:coinsImg, x:Math.random()*animCanvas.width, y:-50, vx:(Math.random()-0.5)*1.2, vy:2+Math.random()*2, r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.2 });
+    particles.push({ img:coinsImg, x:Math.random()*animCanvas.width, y:-50,
+      vx:(Math.random()-0.5)*1.2, vy:2+Math.random()*2,
+      r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.2 });
   }
   for (let i=0;i<bills;i++){
-    particles.push({ img:billsImg, x:Math.random()*animCanvas.width, y:-50, vx:(Math.random()-0.5)*0.6, vy:1+Math.random()*1.2, r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.05 });
+    particles.push({ img:billsImg, x:Math.random()*animCanvas.width, y:-50,
+      vx:(Math.random()-0.5)*0.6, vy:1+Math.random()*1.2,
+      r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.05 });
   }
 }
 (function loop(){
@@ -84,9 +109,6 @@ function addParticles(amount){
 /*************************
  * Reveal 1,000,000 pixels (déterministe LCG)
  *************************/
-const GRID = 1000;                   // 1000 x 1000 = 1 000 000
-const TOTAL_PIXELS = GRID * GRID;
-
 const photoCanvas = document.getElementById('photoCanvas');
 const maskCanvas  = document.getElementById('maskCanvas');
 const photoCtx = photoCanvas.getContext('2d');
@@ -97,7 +119,7 @@ let maskImageData = null;
 
 // LCG partagé avec le serveur
 let LCG = { M: 1_000_000, A: 21, C: 7, SEED: 1234567, GRID: 1000 };
-let lcgX = 0;        // état courant
+let lcgX = 0;          // état courant
 let revealedCount = 0; // combien ont été révélés (toujours en tête de la permutation)
 
 // charge config depuis le serveur (pour rester synchro avec server/pixels.js)
@@ -106,9 +128,7 @@ async function loadPixelsConfig(){
     const r = await fetch('/api/pixels/config', { cache: 'no-store' });
     if (r.ok) {
       const d = await r.json();
-      if (d && d.M && d.A && d.C && d.SEED && d.GRID) {
-        LCG = d;
-      }
+      if (d && d.M && d.A && d.C && d.SEED && d.GRID) LCG = d;
     }
   } catch {}
   lcgX = LCG.SEED % LCG.M;
@@ -128,19 +148,23 @@ function idxToXY(idx){
 }
 
 // applique transparence pour une position
-function clearAlphaAt(x, y){
-  const i = (y * LCG.GRID + x) * 4;
-  maskImageData.data[i+3] = 0;
+function clearAlphaAtIndex(i){
+  maskImageData.data[i*4 + 3] = 0;
 }
 
-// révèle jusqu’à target (1 $ = 1 pixel)
+function clearAlphaAtXY(x, y){
+  const i = (y * LCG.GRID + x);
+  clearAlphaAtIndex(i);
+}
+
+// révèle jusqu’à target (1 $ = 1 pixel) — ordre déterministe
 function revealUpTo(target){
   target = Math.max(0, Math.min(LCG.M, target|0));
   if (!maskImageData) return;
   while (revealedCount < target){
     const idx = lcgNext();           // pixel déterministe suivant
     const [x, y] = idxToXY(idx);
-    clearAlphaAt(x, y);
+    clearAlphaAtXY(x, y);
     revealedCount++;
   }
   maskCtx.putImageData(maskImageData, 0, 0);
@@ -162,16 +186,23 @@ async function initRevealStage(){
   }
   drawPhotoCover();
 
-  // masque doré (dégradé)
+  // --- Mosaïque de tons dorés (pas un dégradé uniforme) ---
   const d = maskCtx.createImageData(LCG.GRID, LCG.GRID);
   const a = d.data;
+  // palette or (variantes)
+  const PAL = [
+    [201,173,67],  // #c9ad43
+    [212,175,55],  // #d4af37
+    [184,134,11],  // #b8860b
+    [230,190,95],  // #e6be5f
+    [255,215,0]    // #ffd700
+  ];
   for (let i=0;i<LCG.M;i++){
-    // petit bruit doré
-    const pal = [[201,173,67],[212,175,55],[184,134,11],[230,190,95],[255,215,0]];
-    const base = pal[(Math.random()*pal.length)|0];
-    const r = Math.max(0, Math.min(255, base[0] + (Math.random()*22-11)));
-    const g = Math.max(0, Math.min(255, base[1] + (Math.random()*22-11)));
-    const b = Math.max(0, Math.min(255, base[2] + (Math.random()*22-11)));
+    const base = PAL[(Math.random()*PAL.length)|0];
+    // micro-variations pour l'effet mosaïque
+    const r = Math.max(0, Math.min(255, base[0] + (Math.random()*26-13)));
+    const g = Math.max(0, Math.min(255, base[1] + (Math.random()*26-13)));
+    const b = Math.max(0, Math.min(255, base[2] + (Math.random()*26-13)));
     const j = i*4; a[j]=r; a[j+1]=g; a[j+2]=b; a[j+3]=255;
   }
   maskImageData = d;
@@ -197,7 +228,12 @@ function drawPhotoCover(){
 function applyTotalsNet(totalNet, last){
   const t = Number(totalNet) || 0;
   if (totalEl)  totalEl.textContent = fmtMoney(t);
-  if (progress) progress.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
+  const pct = Math.max(0, Math.min(100, (t / 1_000_000) * 100));
+  if (progress) {
+    progress.style.width = `${pct}%`;
+    if (pct > 0) progress.classList.add('nonzero'); else progress.classList.remove('nonzero');
+  }
+  if (progressLabel) progressLabel.textContent = `${pct.toFixed(2)}%`;
   if (lastEl)   lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
   // révélation déterministe jusqu’au floor(totalNet)
   revealUpTo(Math.floor(t));
@@ -230,14 +266,27 @@ socket.on('update', ({ totalNet, last }) => applyTotalsNet(totalNet, last));
  *************************/
 let stripe, elements, paymentElement;
 
+function waitForStripeJs(){
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      if (window.Stripe) return resolve();
+      setTimeout(check, 50);
+    };
+    check();
+    setTimeout(() => reject(new Error('Stripe.js not loaded')), 10000);
+  });
+}
+
 async function fetchConfig(){
-  const r = await fetch('/api/config'); const d = await r.json();
-  if (!d.publishableKey) throw new Error('Stripe publishable key missing');
+  const r = await fetch('/api/config', { cache: 'no-store' });
+  const d = await r.json();
+  if (!d.publishableKey) throw new Error('Stripe publishable key missing (set STRIPE_PUBLISHABLE_KEY in Railway)');
   return d;
 }
 async function createPaymentIntent(amount, pseudo){
   const r = await fetch('/api/create-payment-intent', {
-    method: 'POST', headers: { 'Content-Type':'application/json' },
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ amount, pseudo })
   });
   const d = await r.json();
@@ -247,6 +296,7 @@ async function createPaymentIntent(amount, pseudo){
 async function mountPaymentElement(){
   try{
     hideError();
+    await waitForStripeJs();
     const { publishableKey } = await fetchConfig();
     stripe = Stripe(publishableKey);
 
@@ -260,7 +310,13 @@ async function mountPaymentElement(){
     paymentElement.mount('#payment-element');
 
     if (donateBtn) donateBtn.disabled = false;
-  } catch (e) { showError('Stripe init error: ' + (e.message || e)); }
+    const pe = document.getElementById('payment-error');
+    if (pe) pe.classList.add('hidden');
+  } catch (e) {
+    showError('Stripe init error: ' + (e.message || e));
+    const pe = document.getElementById('payment-error');
+    if (pe) { pe.textContent = 'Stripe init error: ' + (e.message || e); pe.classList.remove('hidden'); }
+  }
 }
 async function confirmAndRecord(){
   const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
@@ -282,7 +338,7 @@ async function confirmAndRecord(){
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
   applyTotalsNet(data.totalNet, data.last);
-  await mountPaymentElement(); // prêt pour le prochain don
+  await mountPaymentElement(); // prêt pour le don suivant
 }
 
 /*************************
@@ -293,7 +349,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadInitialTotals();
   mountPaymentElement().catch(() => {});
 });
+
 amountEl?.addEventListener('change', () => { mountPaymentElement().catch(() => {}); });
+
 donateBtn?.addEventListener('click', async () => {
   await unlockAudio();
   donateBtn.disabled = true; hideError();

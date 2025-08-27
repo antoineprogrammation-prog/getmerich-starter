@@ -4,15 +4,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # ---------- Install deps ----------
-# Copie les manifests (cache friendly)
+# On copie uniquement les manifests pour profiter du cache
 COPY package.json package-lock.json* ./
 COPY server/package.json server/package.json
 COPY client/package.json client/package.json
 RUN npm install --omit=dev
 
-# ---------- Build client ----------
+# ---------- Copier tout le code ----------
 COPY . .
-RUN npm run postinstall
+
+# ---------- Build du client APRES avoir copié le code ----------
+RUN npm run build:client
 
 # ---------- Run ----------
 EXPOSE 8080

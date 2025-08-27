@@ -6,7 +6,6 @@
   --accent: #5eead4;
   --barbg: #232838;
 }
-
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 body {
@@ -15,16 +14,12 @@ body {
   background: radial-gradient(1200px 800px at 50% -10%, #1a2030, #0f1115);
   color: var(--text);
 }
-
 .container { max-width: 760px; margin: 48px auto; padding: 24px; background: var(--card); border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
 h1 { margin: 0 0 8px; font-size: 32px; }
 .subtitle { margin: 0 0 24px; color: var(--muted); }
-
 .gauge { background: #141827; border: 1px solid #22283a; border-radius: 12px; padding: 16px; }
 .gauge-header, .gauge-footer { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
 .gauge-header strong, .gauge-footer strong { color: var(--text); }
-
 .gauge-bar { position: relative; height: 18px; background: var(--barbg); border-radius: 10px; overflow: hidden; margin: 12px 0; }
 .gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--accent), #22d3ee); width: 0%; transition: width 600ms ease; }
-
 .notice { margin-top: 18px; padding: 12px 14px; border: 1px dashed #2a3147; border-radius: 10px; color: var(--muted); background: #121625; }

@@ -12,7 +12,7 @@ async function loadStats() {
 
     document.getElementById('noticeText').textContent =
       data.pixelsEnabled === false
-        ? 'Pixels désactivés temporairement (mode secours).'
+        ? 'Pixels désactivés temporairement.'
         : 'Affichage des pixels actif.';
   } catch {
     document.getElementById('noticeText').textContent = 'Impossible de charger les stats.';

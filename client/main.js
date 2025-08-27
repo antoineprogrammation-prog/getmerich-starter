@@ -14,16 +14,8 @@ const coinSound = document.getElementById('coinSound');
 const fmtMoney = (v) =>
   new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
-function showError(msg) {
-  if (!notice) return;
-  notice.textContent = msg;
-  notice.classList.remove('hidden');
-}
-function hideError() {
-  if (!notice) return;
-  notice.textContent = '';
-  notice.classList.add('hidden');
-}
+function showError(msg) { if (!notice) return; notice.textContent = msg; notice.classList.remove('hidden'); }
+function hideError()    { if (!notice) return; notice.textContent = '';  notice.classList.add('hidden'); }
 
 /*************************
  * Socket.io (live updates)
@@ -37,13 +29,8 @@ let audioUnlocked = false;
 async function unlockAudio() {
   if (audioUnlocked || !coinSound) return;
   try {
-    coinSound.muted = true;
-    await coinSound.play();
-    await new Promise(r => setTimeout(r, 10));
-    coinSound.pause();
-    coinSound.currentTime = 0;
-    coinSound.muted = false;
-    audioUnlocked = true;
+    coinSound.muted = true; await coinSound.play(); await new Promise(r => setTimeout(r, 10));
+    coinSound.pause(); coinSound.currentTime = 0; coinSound.muted = false; audioUnlocked = true;
   } catch {}
 }
 addEventListener('pointerdown', unlockAudio, { once: true });
@@ -58,12 +45,7 @@ function resizeAnim(){ animCanvas.width = innerWidth; animCanvas.height = innerH
 addEventListener('resize', resizeAnim); resizeAnim();
 
 function loadImage(src){
-  return new Promise((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = () => rej(new Error('img '+src));
-    i.src = src;
-  });
+  return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('img '+src)); i.src = src; });
 }
 let coinsImg, billsImg, assetsReady = false;
 Promise.all([
@@ -77,14 +59,10 @@ function addParticles(amount){
   const coins = Math.min(Math.max(3, Math.floor(amount / 5)), 10);
   const bills = amount >= 20 ? Math.min(Math.floor(amount / 20), 5) : 0;
   for (let i=0;i<coins;i++){
-    particles.push({ img:coinsImg, x:Math.random()*animCanvas.width, y:-50,
-      vx:(Math.random()-0.5)*1.2, vy:2+Math.random()*2,
-      r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.2 });
+    particles.push({ img:coinsImg, x:Math.random()*animCanvas.width, y:-50, vx:(Math.random()-0.5)*1.2, vy:2+Math.random()*2, r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.2 });
   }
   for (let i=0;i<bills;i++){
-    particles.push({ img:billsImg, x:Math.random()*animCanvas.width, y:-50,
-      vx:(Math.random()-0.5)*0.6, vy:1+Math.random()*1.2,
-      r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.05 });
+    particles.push({ img:billsImg, x:Math.random()*animCanvas.width, y:-50, vx:(Math.random()-0.5)*0.6, vy:1+Math.random()*1.2, r:Math.random()*Math.PI*2, vr:(Math.random()-0.5)*0.05 });
   }
 }
 (function loop(){
@@ -104,7 +82,7 @@ function addParticles(amount){
 })();
 
 /*************************
- * Reveal 1,000,000 pixels
+ * Reveal 1,000,000 pixels (déterministe LCG)
  *************************/
 const GRID = 1000;                   // 1000 x 1000 = 1 000 000
 const TOTAL_PIXELS = GRID * GRID;
@@ -117,26 +95,63 @@ const maskCtx  = maskCanvas.getContext('2d', { willReadFrequently: true });
 let photoImg = null;
 let maskImageData = null;
 
-// Persistance locale des indices révélés
-const REVEAL_STORAGE_KEY = 'revealed_indices_v1';
-let revealedSet = new Set();
+// LCG partagé avec le serveur
+let LCG = { M: 1_000_000, A: 21, C: 7, SEED: 1234567, GRID: 1000 };
+let lcgX = 0;        // état courant
+let revealedCount = 0; // combien ont été révélés (toujours en tête de la permutation)
 
-function loadRevealedFromStorage(){
+// charge config depuis le serveur (pour rester synchro avec server/pixels.js)
+async function loadPixelsConfig(){
   try {
-    const raw = localStorage.getItem(REVEAL_STORAGE_KEY);
-    if (!raw) return;
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) revealedSet = new Set(arr);
+    const r = await fetch('/api/pixels/config', { cache: 'no-store' });
+    if (r.ok) {
+      const d = await r.json();
+      if (d && d.M && d.A && d.C && d.SEED && d.GRID) {
+        LCG = d;
+      }
+    }
   } catch {}
+  lcgX = LCG.SEED % LCG.M;
 }
-function saveRevealedToStorage(){
-  try { localStorage.setItem(REVEAL_STORAGE_KEY, JSON.stringify([...revealedSet])); } catch {}
+
+// next valeur dans [0..M-1]
+function lcgNext(){
+  lcgX = ( (LCG.A * lcgX + LCG.C) % LCG.M );
+  return lcgX;
+}
+
+// convertit index → (x,y)
+function idxToXY(idx){
+  const x = idx % LCG.GRID;
+  const y = (idx / LCG.GRID) | 0;
+  return [x, y];
+}
+
+// applique transparence pour une position
+function clearAlphaAt(x, y){
+  const i = (y * LCG.GRID + x) * 4;
+  maskImageData.data[i+3] = 0;
+}
+
+// révèle jusqu’à target (1 $ = 1 pixel)
+function revealUpTo(target){
+  target = Math.max(0, Math.min(LCG.M, target|0));
+  if (!maskImageData) return;
+  while (revealedCount < target){
+    const idx = lcgNext();           // pixel déterministe suivant
+    const [x, y] = idxToXY(idx);
+    clearAlphaAt(x, y);
+    revealedCount++;
+  }
+  maskCtx.putImageData(maskImageData, 0, 0);
 }
 
 async function initRevealStage(){
+  await loadPixelsConfig();
+
   // taille logique
   photoCanvas.width = 1080; photoCanvas.height = 1616;
-  maskCanvas.width  = GRID;  maskCanvas.height  = GRID;
+  maskCanvas.width  = LCG.GRID;  maskCanvas.height  = LCG.GRID;
 
   // image
   try { photoImg = await loadImage('/assets/me.jpg'); }
@@ -147,10 +162,11 @@ async function initRevealStage(){
   }
   drawPhotoCover();
 
-  // masque doré opaque
-  const d = maskCtx.createImageData(GRID, GRID);
+  // masque doré (dégradé)
+  const d = maskCtx.createImageData(LCG.GRID, LCG.GRID);
   const a = d.data;
-  for (let i=0;i<TOTAL_PIXELS;i++){
+  for (let i=0;i<LCG.M;i++){
+    // petit bruit doré
     const pal = [[201,173,67],[212,175,55],[184,134,11],[230,190,95],[255,215,0]];
     const base = pal[(Math.random()*pal.length)|0];
     const r = Math.max(0, Math.min(255, base[0] + (Math.random()*22-11)));
@@ -159,15 +175,6 @@ async function initRevealStage(){
     const j = i*4; a[j]=r; a[j+1]=g; a[j+2]=b; a[j+3]=255;
   }
   maskImageData = d;
-
-  // ré-applique pixels déjà révélés
-  loadRevealedFromStorage();
-  if (revealedSet.size){
-    const data = maskImageData.data;
-    for (const idx of revealedSet){
-      const p = idx * 4; data[p+3] = 0;
-    }
-  }
   maskCtx.putImageData(maskImageData, 0, 0);
 }
 
@@ -184,63 +191,34 @@ function drawPhotoCover(){
   photoCtx.drawImage(photoImg, sx,sy,sw,sh, 0,0,cw,ch);
 }
 
-// Révèle "count" NOUVEAUX pixels (jamais ceux déjà révélés)
-function revealNewPixels(count){
-  if (!maskImageData || count <= 0) return;
-  const data = maskImageData.data;
-  let added = 0, attempts = 0, maxAttempts = count * 50; // sécurité
-  while (added < count && attempts < maxAttempts){
-    attempts++;
-    const idx = (Math.random() * TOTAL_PIXELS) | 0;
-    if (revealedSet.has(idx)) continue;
-    revealedSet.add(idx);
-    const p = idx * 4;
-    data[p+3] = 0; // transparent = révélé
-    added++;
-  }
-  if (added > 0){
-    maskCtx.putImageData(maskImageData, 0, 0);
-    saveRevealedToStorage();
-  }
-}
-
-// Aligne le nombre de pixels révélés avec le total net ($ → pixels)
-function syncRevealToTotal(totalNet){
-  const target = Math.max(0, Math.min(TOTAL_PIXELS, Math.floor(totalNet)));
-  const have   = revealedSet.size;
-  const need   = target - have;
-  if (need > 0) revealNewPixels(need);
-}
-
 /*************************
- * Totaux / Jauge / Binding reveal
+ * Jauge + binding pixels
  *************************/
 function applyTotalsNet(totalNet, last){
   const t = Number(totalNet) || 0;
   if (totalEl)  totalEl.textContent = fmtMoney(t);
   if (progress) progress.style.width = `${Math.min((t / 1_000_000) * 100, 100)}%`;
   if (lastEl)   lastEl.textContent = last ? `Thanks to the last donor : ${last.pseudo} ($${last.amount})` : 'Thanks to the last donor : -';
-  syncRevealToTotal(t);
+  // révélation déterministe jusqu’au floor(totalNet)
+  revealUpTo(Math.floor(t));
 }
 
 /*************************
- * Chargement initial (min 7 219,53)
+ * Chargement initial
  *************************/
-const MIN_START_TOTAL = 7219.53;
-
 async function loadInitialTotals(){
   let serverTotal = null, last = null;
   const endpoints = ['/api/summary', '/api/donations/summary', '/api/total'];
   for (const url of endpoints){
     try{
-      const r = await fetch(url);
+      const r = await fetch(url, { cache: 'no-store' });
       if (!r.ok) continue;
       const d = await r.json();
       if (typeof d.totalNet !== 'undefined'){ serverTotal = Number(d.totalNet) || 0; last = d.last || null; break; }
       if (typeof d.total    !== 'undefined'){ serverTotal = Number(d.total)    || 0; last = d.last || null; break; }
     }catch{}
   }
-  const start = serverTotal !== null ? Math.max(MIN_START_TOTAL, serverTotal) : MIN_START_TOTAL;
+  const start = serverTotal ?? 7219.54;
   applyTotalsNet(start, last);
 }
 
@@ -253,15 +231,13 @@ socket.on('update', ({ totalNet, last }) => applyTotalsNet(totalNet, last));
 let stripe, elements, paymentElement;
 
 async function fetchConfig(){
-  const r = await fetch('/api/config');
-  const d = await r.json();
+  const r = await fetch('/api/config'); const d = await r.json();
   if (!d.publishableKey) throw new Error('Stripe publishable key missing');
   return d;
 }
 async function createPaymentIntent(amount, pseudo){
   const r = await fetch('/api/create-payment-intent', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json' },
+    method: 'POST', headers: { 'Content-Type':'application/json' },
     body: JSON.stringify({ amount, pseudo })
   });
   const d = await r.json();
@@ -306,20 +282,18 @@ async function confirmAndRecord(){
   if (!r.ok || !data.success) throw new Error(data.error || 'Donation save failed');
 
   applyTotalsNet(data.totalNet, data.last);
-  await mountPaymentElement(); // prêt pour le don suivant
+  await mountPaymentElement(); // prêt pour le prochain don
 }
 
 /*************************
  * Boot
  *************************/
 document.addEventListener('DOMContentLoaded', async () => {
-  try { await initRevealStage(); } catch (e) { showError('Reveal init error: ' + (e.message || e)); }
+  await initRevealStage();
   await loadInitialTotals();
   mountPaymentElement().catch(() => {});
 });
-
 amountEl?.addEventListener('change', () => { mountPaymentElement().catch(() => {}); });
-
 donateBtn?.addEventListener('click', async () => {
   await unlockAudio();
   donateBtn.disabled = true; hideError();

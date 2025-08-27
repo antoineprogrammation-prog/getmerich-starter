@@ -4,11 +4,11 @@
   <meta charset="utf-8" />
   <title>Get Me Rich</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
   <script src="https://js.stripe.com/v3/" defer></script>
   <script src="/main.js" defer></script>
-  <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
@@ -18,12 +18,12 @@
 
     <div id="notice" class="notice hidden"></div>
 
+    <!-- Jauge / total -->
     <div id="totalContainer">
-      <span id="total">0</span> / 1 000 000$ (net)
+      <span id="total">7 219,54</span> / 1 000 000$
     </div>
-
-    <div id="last">Thanks to the last donor : -</div>
     <div id="progress-bar"><div id="progress"></div></div>
+    <div id="last">Thanks to the last donor : -</div>
 
     <!-- Reveal -->
     <div class="reveal">
@@ -35,50 +35,52 @@
       </div>
     </div>
 
-    <!-- Formulaire don -->
-    <input type="text" id="pseudo" placeholder="Your pseudo" />
-    <input type="number" id="amount" placeholder="Amount in $" min="1" value="5" />
+    <!-- Formulaire -->
+    <div class="form">
+      <input type="text" id="pseudo" placeholder="Your pseudo" />
+      <input type="number" id="amount" name="amount" placeholder="Amount in $" min="1" required />
 
-    <div class="fineprint">
-      Payment processing fees are included; the amount shown reflects what we actually receive.
+      <div class="fineprint">
+        Payment processing fees are included; the amount shown reflects what we actually receive.
+      </div>
+
+      <!-- Stripe Payment Element -->
+      <div id="payment-element"></div>
+      <div id="payment-error" class="notice error hidden"></div>
+      <button id="donateBtn" disabled>Donate</button>
+
+      <!-- (Optionnel) Diag Stripe visible si erreur -->
+      <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
 
-    <!-- Stripe Payment Element (monté par main.js) -->
-    <div id="payment-element"></div>
-    <button id="donateBtn" disabled>Donate</button>
-
-    <!-- Tableau : pictos à gauche / drapeaux + textes à droite -->
+    <!-- Tableau pictos / drapeaux -->
     <div class="info-grid">
-      <!-- Row 1 -->
-      <div class="info-ico" aria-hidden="true">🌍</div>
+      <div class="info-ico">🌍</div>
       <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt="UK"> We are 8 billion. If just 0.01% gave $1, my goal would be reached.</p>
-        <p><img class="flag" src="/assets/fr.png" alt="FR"> Nous sommes 8 milliards. Si 0,01% donnait 1$, mon objectif serait atteint.</p>
-        <p><img class="flag" src="/assets/es.png" alt="ES"> Somos 8 mil millones. Si el 0,01% diera 1$, lograría mi meta.</p>
-        <p><img class="flag" src="/assets/cn.png" alt="CN"> 我们是80亿人。若仅有0.01%捐赠1美元，我就能达成目标。</p>
+        <p><img class="flag" src="/assets/uk.png" alt=""> We are 8 billion. If just 0.01% gave $1, my goal would be reached.</p>
+        <p><img class="flag" src="/assets/fr.png" alt=""> Nous sommes 8 milliards. Si 0,01% donnait 1$, mon objectif serait atteint.</p>
+        <p><img class="flag" src="/assets/es.png" alt=""> Somos 8 mil millones. Si el 0,01% diera 1$, lograría mi meta.</p>
+        <p><img class="flag" src="/assets/cn.png" alt=""> 我们是80亿人。若仅有0.01%捐赠1美元，我就能达成目标。</p>
       </div>
 
-      <!-- Row 2 -->
-      <div class="info-ico" aria-hidden="true">💵</div>
+      <div class="info-ico">💵</div>
       <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt="UK"> 1$ = 1 pixel revealed on my photo.</p>
-        <p><img class="flag" src="/assets/fr.png" alt="FR"> 1$ = 1 pixel révélé sur ma photo.</p>
-        <p><img class="flag" src="/assets/es.png" alt="ES"> 1$ = 1 píxel revelado en mi foto.</p>
-        <p><img class="flag" src="/assets/cn.png" alt="CN"> 每 1 美元 = 我的照片揭示 1 个像素。</p>
+        <p><img class="flag" src="/assets/uk.png" alt=""> 1$ = 1 pixel revealed on my photo.</p>
+        <p><img class="flag" src="/assets/fr.png" alt=""> 1$ = 1 pixel révélé sur ma photo.</p>
+        <p><img class="flag" src="/assets/es.png" alt=""> 1$ = 1 píxel revelado en mi foto.</p>
+        <p><img class="flag" src="/assets/cn.png" alt=""> 每 1 美元 = 我的照片揭示 1 个像素。</p>
       </div>
 
-      <!-- Row 3 -->
-      <div class="info-ico" aria-hidden="true">🔒</div>
+      <div class="info-ico">🔒</div>
       <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt="UK"> Payments are processed securely by Stripe.</p>
-        <p><img class="flag" src="/assets/fr.png" alt="FR"> Les paiements sont traités en toute sécurité par Stripe.</p>
-        <p><img class="flag" src="/assets/es.png" alt="ES"> Los pagos se procesan de forma segura con Stripe.</p>
-        <p><img class="flag" src="/assets/cn.png" alt="CN"> 通过 Stripe 安全处理付款。</p>
+        <p><img class="flag" src="/assets/uk.png" alt=""> Payments are processed securely by Stripe.</p>
+        <p><img class="flag" src="/assets/fr.png" alt=""> Les paiements sont traités en toute sécurité par Stripe.</p>
+        <p><img class="flag" src="/assets/es.png" alt=""> Los pagos se procesan de forma segura con Stripe.</p>
+        <p><img class="flag" src="/assets/cn.png" alt=""> 通过 Stripe 安全处理付款。</p>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
   <footer class="site-footer">
     commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
   </footer>

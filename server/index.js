@@ -7,15 +7,17 @@ const compression = require('compression');
 const cors = require('cors');
 try { require('dotenv').config(); } catch (_) {}
 
-// Stripe
+/* ---------- Stripe ---------- */
 let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
-  try { stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); }
-  catch (e) { console.error('[stripe] init error:', e.message); }
-}
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || '';
 
-// Pixels config (LCG partagé avec le front)
-const PX = require('./pixels');
+if (STRIPE_SECRET_KEY) {
+  try { stripe = require('stripe')(STRIPE_SECRET_KEY); }
+  catch (e) { console.error('[stripe] init error:', e.message); }
+} else {
+  console.warn('[stripe] STRIPE_SECRET_KEY missing at runtime');
+}
 
 const app = express();
 app.disable('x-powered-by');
@@ -24,49 +26,66 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// HTTP + Socket.io
+/* ---------- HTTP + Socket.io ---------- */
 const server = http.createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
 
-// État simple (tu brancheras ta DB plus tard)
-let totalNet = 7219.54; // ← valeur actuelle visible (pixels = floor(totalNet))
+/* ---------- State (mémoire) ---------- */
+let totalNet = 7219.54;
 let lastDonation = null;
 
-// Healthcheck
+/* ---------- Health ---------- */
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
-// Expose la config pixels (front lira cette route)
-app.get('/api/pixels/config', (_req, res) => res.json(PX));
+/* ---------- DIAG Stripe (à ouvrir dans le navigateur) ---------- */
+app.get('/api/diag/stripe', (_req, res) => {
+  res.json({
+    havePublishableKey: Boolean(STRIPE_PUBLISHABLE_KEY),
+    haveSecretKey: Boolean(STRIPE_SECRET_KEY),
+    publishableKeyPrefix: STRIPE_PUBLISHABLE_KEY ? STRIPE_PUBLISHABLE_KEY.slice(0, 7) : null,
+    modeHint: STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_') ? 'test'
+           : STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_') ? 'live'
+           : 'unknown'
+  });
+});
 
-// Résumé total / compat
+/* ---------- Pixels config (utilisé par le front) ---------- */
+app.get('/api/pixels/config', (_req, res) => {
+  const GRID = 1000, M = GRID * GRID, A = 21, C = 7, SEED = 1234567 % M;
+  res.json({ GRID, M, A, C, SEED });
+});
+
+/* ---------- Résumés ---------- */
 app.get('/api/summary', (_req, res) => res.json({ totalNet, last: lastDonation }));
 app.get('/api/total',   (_req, res) => res.json({ total: totalNet, last: lastDonation }));
 
-// Stripe publishable key
+/* ---------- Stripe config envoyée au client ---------- */
 app.get('/api/config', (_req, res) => {
-  res.json({ publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
+  res.json({ publishableKey: STRIPE_PUBLISHABLE_KEY || '' });
 });
 
-// Crée un PaymentIntent (USD)
+/* ---------- Crée un PaymentIntent ---------- */
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
-    if (!stripe) return res.status(500).json({ error: 'Stripe non configuré' });
+    if (!stripe) return res.status(500).json({ error: 'Stripe non configuré (STRIPE_SECRET_KEY manquant côté serveur)' });
+
     const amountDollars = Math.max(1, Math.floor(Number(req.body?.amount || 1)));
     const pseudo = (req.body?.pseudo || 'Anonymous').toString().slice(0, 50);
+
     const intent = await stripe.paymentIntents.create({
       amount: amountDollars * 100,
       currency: 'usd',
       description: `Donation by ${pseudo}`,
       automatic_payment_methods: { enabled: true }
     });
-    res.json({ clientSecret: intent.client_secret });
+    return res.json({ clientSecret: intent.client_secret });
   } catch (e) {
-    console.error('[stripe] PI error:', e);
-    res.status(500).json({ error: e.message || 'PI failed' });
+    console.error('[stripe] create PI error:', e);
+    return res.status(500).json({ error: e.message || 'PI failed' });
   }
 });
 
-// Enregistre la donation (en vrai: vérifier via webhook "payment_intent.succeeded")
+/* ---------- Enregistre le don (simplifié) ---------- */
 app.post('/api/donate', async (req, res) => {
   try {
     const amount = Math.max(1, Math.floor(Number(req.body?.amount || 1)));
@@ -75,17 +94,15 @@ app.post('/api/donate', async (req, res) => {
     totalNet = Number((totalNet + amount).toFixed(2));
     lastDonation = { pseudo, amount };
 
-    // Push live pour tous les clients
     io.emit('update', { totalNet, last: lastDonation });
-
-    res.json({ success: true, totalNet, last: lastDonation });
+    return res.json({ success: true, totalNet, last: lastDonation });
   } catch (e) {
     console.error('[donate] error:', e);
-    res.status(500).json({ success: false, error: e.message || 'donation failed' });
+    return res.status(500).json({ success: false, error: e.message || 'donation failed' });
   }
 });
 
-// ---- Static front (Vite build) ----
+/* ---------- Static front (Vite build) ---------- */
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 const indexHtml  = path.join(clientDist, 'index.html');
 

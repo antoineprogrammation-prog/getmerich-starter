@@ -13,19 +13,18 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Healthcheck pour Railway
+// Healthcheck
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
 // Servir le build Vite du client
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
 
-// Fallback SPA
+// Fallback SPA (ne pas matcher /api/* si tu en ajoutes plus tard)
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
-// Écoute sur PORT/0.0.0.0 (Railway)
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {

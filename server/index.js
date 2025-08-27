@@ -1,4 +1,3 @@
-// server/index.js
 /* eslint-disable no-console */
 const path = require('path');
 const express = require('express');
@@ -21,12 +20,12 @@ app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
 
-// Fallback SPA (ne pas écraser les routes API si tu en ajoutes)
+// Fallback SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
-// Écoute sur le port fourni par Railway et 0.0.0.0
+// Écoute sur PORT/0.0.0.0 (Railway)
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 app.listen(PORT, HOST, () => {

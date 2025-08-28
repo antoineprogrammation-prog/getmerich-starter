@@ -39,9 +39,11 @@
         <p><img class="flag" src="/assets/cn.png" alt=""> 每 1 美元 = 揭示 1 个像素</p>
       </div>
 
-      <!-- Photo SOUS les pixels -->
+      <!-- ✅ Photo SOUS les pixels : l’ordre compte -->
       <div class="reveal-stage">
+        <!-- La photo en bas -->
         <canvas id="photoCanvas"></canvas>
+        <!-- Le masque doré par-dessus -->
         <canvas id="maskCanvas"></canvas>
       </div>
     </div>
@@ -92,7 +94,7 @@
     commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
   </footer>
 
-  <!-- ✅ Animation + Son -->
+  <!-- Animation + Son -->
   <canvas id="animationCanvas"></canvas>
   <audio id="coinSound" src="/assets/sound.mp3" preload="auto"></audio>
 </body>

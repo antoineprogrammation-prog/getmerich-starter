@@ -6,21 +6,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
-  <!-- libs -->
+  <!-- libs chargées avant le module -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://js.stripe.com/v3/"></script>
-
-  <!-- IMPORTANT: Vite a besoin de type="module" pour inclure main.js dans le build -->
+  <!-- IMPORTANT: Vite a besoin de type="module" pour intégrer main.js au build -->
   <script type="module" src="/main.js"></script>
+</head>
+<body>
 
+  <!-- Noscript doit être dans le body (pas de div dans <head>) -->
   <noscript>
-    <style>body{opacity:1!important}</style>
     <div style="padding:12px;margin:12px;border:1px solid #a00;background:#200;color:#fbb">
       JavaScript is required to load payments and the pixel reveal.
     </div>
   </noscript>
-</head>
-<body>
+
   <div class="container">
     <h1 class="main-title">
       Get me rich <span class="please">(please)</span>
@@ -59,7 +59,7 @@
       <div id="payment-error" class="notice error hidden"></div>
       <button id="donateBtn" disabled>Donate</button>
 
-      <!-- Diag Stripe si besoin -->
+      <!-- Diag Stripe (s’affiche uniquement si erreur Stripe) -->
       <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
 

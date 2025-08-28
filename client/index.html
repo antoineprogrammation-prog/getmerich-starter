@@ -6,21 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
-  <!-- libs chargées avant le module -->
+  <!-- libs -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://js.stripe.com/v3/"></script>
-  <!-- IMPORTANT: Vite a besoin de type="module" pour intégrer main.js au build -->
+  <!-- IMPORTANT: Vite intègre /main.js quand il est en module -->
   <script type="module" src="/main.js"></script>
 </head>
 <body>
-
-  <!-- Noscript doit être dans le body (pas de div dans <head>) -->
-  <noscript>
-    <div style="padding:12px;margin:12px;border:1px solid #a00;background:#200;color:#fbb">
-      JavaScript is required to load payments and the pixel reveal.
-    </div>
-  </noscript>
-
   <div class="container">
     <h1 class="main-title">
       Get me rich <span class="please">(please)</span>
@@ -38,7 +30,16 @@
     <!-- Reveal -->
     <div class="reveal">
       <div class="reveal-title">Make a donation to reveal who I am</div>
-      <div class="reveal-legend">1$ = 1 pixel revealed</div>
+
+      <!-- ✅ LIGNE MULTILINGUE : 1$ = 1 pixel revealed (avec drapeaux) -->
+      <div class="reveal-legend legend-multi">
+        <p><img class="flag" src="/assets/uk.png" alt=""> 1$ = 1 pixel revealed</p>
+        <p><img class="flag" src="/assets/fr.png" alt=""> 1$ = 1 pixel révélé</p>
+        <p><img class="flag" src="/assets/es.png" alt=""> 1$ = 1 píxel revelado</p>
+        <p><img class="flag" src="/assets/cn.png" alt=""> 每 1 美元 = 揭示 1 个像素</p>
+      </div>
+
+      <!-- ✅ La photo est SOUS les pixels (photoCanvas d'abord, puis maskCanvas au-dessus) -->
       <div class="reveal-stage">
         <canvas id="photoCanvas"></canvas>
         <canvas id="maskCanvas"></canvas>
@@ -63,39 +64,19 @@
       <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
 
-    <!-- Tableau pictos / drapeaux -->
-    <div class="info-grid">
-      <div class="info-ico">🌍</div>
-      <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt=""> We are 8 billion. If just 0.01% gave $1, my goal would be reached.</p>
-        <p><img class="flag" src="/assets/fr.png" alt=""> Nous sommes 8 milliards. Si 0,01% donnait 1$, mon objectif serait atteint.</p>
-        <p><img class="flag" src="/assets/es.png" alt=""> Somos 8 mil millones. Si el 0,01% diera 1$, lograría mi meta.</p>
-        <p><img class="flag" src="/assets/cn.png" alt=""> 我们是80亿人。若仅有0.01%捐赠1美元，我就能达成目标。</p>
+    <!-- ✅ BAS DE PAGE : uniquement 2 colonnes alignées -->
+    <div class="two-notes">
+      <div class="note">
+        <div class="note-ico">🌍</div>
+        <div class="note-body">
+          <p><img class="flag" src="/assets/uk.png" alt=""> We are 8 billion. If just 0.01% gave $1, my goal would be reached.</p>
+          <p><img class="flag" src="/assets/fr.png" alt=""> Nous sommes 8 milliards. Si 0,01% donnait 1$, mon objectif serait atteint.</p>
+          <p><img class="flag" src="/assets/es.png" alt=""> Somos 8 mil millones. Si el 0,01% diera 1$, lograría mi meta.</p>
+          <p><img class="flag" src="/assets/cn.png" alt=""> 我们是80亿人。若仅有0.01%捐赠1美元，我就能达成目标。</p>
+        </div>
       </div>
 
-      <div class="info-ico">💵</div>
-      <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt=""> 1$ = 1 pixel revealed on my photo.</p>
-        <p><img class="flag" src="/assets/fr.png" alt=""> 1$ = 1 pixel révélé sur ma photo.</p>
-        <p><img class="flag" src="/assets/es.png" alt=""> 1$ = 1 píxel revelado en mi foto.</p>
-        <p><img class="flag" src="/assets/cn.png" alt=""> 每 1 美元 = 我的照片揭示 1 个像素。</p>
-      </div>
-
-      <div class="info-ico">🔒</div>
-      <div class="info-text">
-        <p><img class="flag" src="/assets/uk.png" alt=""> Payments are processed securely by Stripe.</p>
-        <p><img class="flag" src="/assets/fr.png" alt=""> Les paiements sont traités en toute sécurité par Stripe.</p>
-        <p><img class="flag" src="/assets/es.png" alt=""> Los pagos se procesan de forma segura con Stripe.</p>
-        <p><img class="flag" src="/assets/cn.png" alt=""> 通过 Stripe 安全处理付款。</p>
-      </div>
-    </div>
-  </div>
-
-  <footer class="site-footer">
-    commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
-  </footer>
-
-  <canvas id="animationCanvas"></canvas>
-  <audio id="coinSound" src="/assets/sound.mp3"></audio>
-</body>
-</html>
+      <div class="note">
+        <div class="note-ico">🔒</div>
+        <div class="note-body">
+          <p><img class="flag" src="/assets/uk.png" alt=""> Payments are processed securely by Stripe.</p>

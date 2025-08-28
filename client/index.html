@@ -6,9 +6,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=The+Seasons:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css" />
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
-  <script src="https://js.stripe.com/v3/" defer></script>
-  <script src="/main.js" defer></script>
+  <!-- libs -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+
+  <!-- IMPORTANT: Vite a besoin de type="module" pour inclure main.js dans le build -->
+  <script type="module" src="/main.js"></script>
+
+  <noscript>
+    <style>body{opacity:1!important}</style>
+    <div style="padding:12px;margin:12px;border:1px solid #a00;background:#200;color:#fbb">
+      JavaScript is required to load payments and the pixel reveal.
+    </div>
+  </noscript>
 </head>
 <body>
   <div class="container">
@@ -49,7 +59,7 @@
       <div id="payment-error" class="notice error hidden"></div>
       <button id="donateBtn" disabled>Donate</button>
 
-      <!-- (Optionnel) Diag Stripe visible si erreur -->
+      <!-- Diag Stripe si besoin -->
       <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
 

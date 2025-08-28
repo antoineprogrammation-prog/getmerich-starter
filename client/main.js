@@ -1,3 +1,16 @@
+/***** Global error capture (affiche en rouge toute erreur JS) *****/
+(function(){
+  const box = document.getElementById('payment-error') || document.getElementById('notice');
+  function show(msg){
+    if (!box) return;
+    box.classList.add('error');
+    box.classList.remove('hidden');
+    box.textContent = String(msg);
+  }
+  window.addEventListener('error', e => show('JS error: ' + (e.message || e.error || e)));
+  window.addEventListener('unhandledrejection', e => show('Promise error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)));
+})();
+
 /***** UI *****/
 const notice = document.getElementById('notice');
 function showError(msg){ if(!notice) return; notice.textContent=msg; notice.classList.add('error'); notice.classList.remove('hidden'); }
@@ -35,7 +48,7 @@ function addParticles(amount){ if(!assetsReady) return; const coins=Math.min(Mat
   requestAnimationFrame(loop);
 })();
 
-/***** Photo + masque doré (mosaïque) *****/
+/***** Photo + masque doré *****/
 const GRID=1000, TOTAL=GRID*GRID; const photoCanvas=document.getElementById('photoCanvas'), maskCanvas=document.getElementById('maskCanvas');
 const photoCtx=photoCanvas.getContext('2d'); const maskCtx=maskCanvas.getContext('2d',{willReadFrequently:true});
 let photoImg=null, maskImageData=null, revealedCount=0;
@@ -56,7 +69,7 @@ function revealTo(target){ target=Math.max(0,Math.min(TOTAL,Math.floor(target)))
   maskCtx.putImageData(maskImageData,0,0);
 }
 
-/***** Jauge + binding *****/
+/***** Jauge *****/
 function applyTotalsNet(totalNet,last){ const t=Number(totalNet)||0; if(totalEl) totalEl.textContent=fmtMoney(t);
   const pct=Math.max(0,Math.min(100,(t/1_000_000)*100)); if(progress){ progress.style.width=`${pct}%`; if(pct>0) progress.classList.add('nonzero'); else progress.classList.remove('nonzero'); }
   if(lastEl) lastEl.textContent=last?`Thanks to the last donor : ${last.pseudo} ($${last.amount})`:'Thanks to the last donor : -';

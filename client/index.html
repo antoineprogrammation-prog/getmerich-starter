@@ -31,7 +31,7 @@
     <div class="reveal">
       <div class="reveal-title">Make a donation to reveal who I am</div>
 
-      <!-- ✅ LIGNE MULTILINGUE : 1$ = 1 pixel revealed (avec drapeaux) -->
+      <!-- Ligne multilingue -->
       <div class="reveal-legend legend-multi">
         <p><img class="flag" src="/assets/uk.png" alt=""> 1$ = 1 pixel revealed</p>
         <p><img class="flag" src="/assets/fr.png" alt=""> 1$ = 1 pixel révélé</p>
@@ -39,7 +39,7 @@
         <p><img class="flag" src="/assets/cn.png" alt=""> 每 1 美元 = 揭示 1 个像素</p>
       </div>
 
-      <!-- ✅ La photo est SOUS les pixels (photoCanvas d'abord, puis maskCanvas au-dessus) -->
+      <!-- Photo SOUS les pixels -->
       <div class="reveal-stage">
         <canvas id="photoCanvas"></canvas>
         <canvas id="maskCanvas"></canvas>
@@ -64,7 +64,7 @@
       <div id="stripe-diag" class="notice hidden" style="margin-top:10px;font-size:12px;"></div>
     </div>
 
-    <!-- ✅ BAS DE PAGE : uniquement 2 colonnes alignées -->
+    <!-- Bas de page : 2 colonnes -->
     <div class="two-notes">
       <div class="note">
         <div class="note-ico">🌍</div>
@@ -80,3 +80,20 @@
         <div class="note-ico">🔒</div>
         <div class="note-body">
           <p><img class="flag" src="/assets/uk.png" alt=""> Payments are processed securely by Stripe.</p>
+          <p><img class="flag" src="/assets/fr.png" alt=""> Les paiements sont traités en toute sécurité par Stripe.</p>
+          <p><img class="flag" src="/assets/es.png" alt=""> Los pagos se procesan de forma segura con Stripe.</p>
+          <p><img class="flag" src="/assets/cn.png" alt=""> 通过 Stripe 安全处理付款。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    commercial collab : <a href="mailto:from.hobo.to.millionaire@gmail.com">from.hobo.to.millionaire@gmail.com</a>
+  </footer>
+
+  <!-- ✅ Animation + Son -->
+  <canvas id="animationCanvas"></canvas>
+  <audio id="coinSound" src="/assets/sound.mp3" preload="auto"></audio>
+</body>
+</html>
